@@ -1,6 +1,9 @@
+import utils.Parser
+
 object Main {
 
   def main(args: Array[String]) : Unit = {
-    println("Hello")
+
+    Parser.readFile("dataset/friendships.dat")
   }
 }
