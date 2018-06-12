@@ -11,7 +11,9 @@ object Parser {
   /* NOTE: needs to be a char. Single ' */
   val PIPE_DELIMITER = '|'
 
-  private lazy val dateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSZ")
+  val DEFAULT_DATETIME_ZONE = "Europe/Dublin"
+  val TIMESTAMP_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+  private lazy val dateFormatter = DateTimeFormat.forPattern(TIMESTAMP_FORMAT)
 
   def readFile(path: String) : Unit = {
 
@@ -30,14 +32,14 @@ object Parser {
       val firstUser = new User(cols(1).toLong)
       val secondUser = new User(cols(2).toLong)
 
-      Some(new UserConnection(convertToDateTime(timestampString).toDateTime(DateTimeZone.forID("Etc/GMT-1")), firstUser, secondUser))
+      Some(new UserConnection(convertToDateTime(timestampString), firstUser, secondUser))
     } catch {
       case ex : Exception =>  ex.printStackTrace(); None
     }
   }
 
   def convertToDateTime(timeS: String) : DateTime = {
-      dateFormatter.parseDateTime(timeS.replace("T", " "))
+      dateFormatter.parseDateTime(timeS).withZone(DateTimeZone.forID(DEFAULT_DATETIME_ZONE))
   }
 
   def split(line: String): Array[String] = {
