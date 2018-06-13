@@ -7,4 +7,6 @@ class User(userId: Long, userName: String) {
   var id = userId
   var name = userName
 
+
+  override def toString = s"User($id, $name)"
 }

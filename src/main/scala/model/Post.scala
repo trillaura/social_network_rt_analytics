@@ -8,4 +8,7 @@ class Post(postId: Long, poster: User, body: String, time: DateTime) {
   var user = poster
   var content = body
   var timestamp = time
+
+
+  override def toString = s"Post($id, $user, $content, $timestamp)"
 }
