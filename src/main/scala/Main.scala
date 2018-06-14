@@ -4,6 +4,6 @@ object Main {
 
   def main(args: Array[String]) : Unit = {
 
-    Parser.readFile("dataset/friendships.dat")
+    Parser.readFile("dataset/comments.dat")
   }
 }
