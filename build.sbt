@@ -21,8 +21,8 @@ assembly / mainClass := Some("WordCount")
 val flinkVersion = "1.5.0"
 
 val flinkDependencies = Seq(
-  "org.apache.flink" %% "flink-scala" % flinkVersion % "provided",
-  "org.apache.flink" %% "flink-streaming-scala" % flinkVersion % "provided")
+  "org.apache.flink" %% "flink-scala" % flinkVersion ,
+  "org.apache.flink" %% "flink-streaming-scala" % flinkVersion )
 
 
 lazy val social_rt_analytics = (project in file("."))
