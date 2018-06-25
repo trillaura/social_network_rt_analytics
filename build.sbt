@@ -1,32 +1,32 @@
+
 ThisBuild / scalaVersion := "2.11.8"
-ThisBuild / organization := "it.uniroma2.sabd"
 
-//scalaVersion := "2.11.8"
+ThisBuild / resolvers ++= Seq(
+  "apache-snapshots" at "http://repository.apache.org/snapshots/",
+  DefaultMavenRepository, Resolver.sonatypeRepo("public"),
+  "Apache Development Snapshot Repository" at "https://repository.apache.org/content/repositories/snapshots/",
+  Resolver.mavenLocal
+)
 
+name := "social_network_rt_analytics"
+version := "0.1.0"
+
+// organization := "it.uniroma2.sabd"
 
 /* don't run tests for assembly */
-test in assembly := {}
+assembly / test := {}
+assembly / assemblyJarName := "app.jar"
+assembly / mainClass := Some("WordCount")
 
 val flinkVersion = "1.5.0"
 
 val flinkDependencies = Seq(
-  "org.apache.flink" %% "flink-scala" % flinkVersion,
-  "org.apache.flink" %% "flink-streaming-scala" % flinkVersion)
+  "org.apache.flink" %% "flink-scala" % flinkVersion % "provided",
+  "org.apache.flink" %% "flink-streaming-scala" % flinkVersion % "provided")
 
 
 lazy val social_rt_analytics = (project in file("."))
     .settings(
-      name := "social_network_rt_analytics",
-
-      version := "0.1",
-
-      //scalaVersion := "2.11.8",
-
-
-      resolvers ++= Seq(
-        "apache-snapshots" at "http://repository.apache.org/snapshots/",
-        DefaultMavenRepository, Resolver.sonatypeRepo("public")
-      ),
 
     libraryDependencies ++= Seq(
       "org.scalactic" %% "scalactic" % "3.0.1",
@@ -45,3 +45,16 @@ lazy val social_rt_analytics = (project in file("."))
 
     libraryDependencies ++= flinkDependencies
 )
+
+// make run command include the provided dependencies
+Compile / run  := Defaults.runTask(Compile / fullClasspath,
+  Compile / run / mainClass,
+  Compile / run / runner
+).evaluated
+
+// stays inside the sbt console when we press "ctrl-c" while a Flink programme executes with "run" or "runMain"
+Compile / run / fork := true
+Global / cancelable := true
+
+// exclude Scala library from assembly
+assembly / assemblyOption  := (assembly / assemblyOption).value.copy(includeScala = false)
