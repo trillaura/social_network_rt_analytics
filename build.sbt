@@ -20,7 +20,8 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.0.0" % "test",
   "com.typesafe" % "config" % "1.3.2",
   "joda-time" % "joda-time" % "2.9.9",
-  "org.joda" % "joda-convert" % "2.0.1")
+  "org.joda" % "joda-convert" % "2.0.1",
+  "org.apache.flink" %% "flink-connector-kafka-0.11" % flinkVersion)
 
 val flinkDependencies = Seq(
   "org.apache.flink" %% "flink-scala" % flinkVersion,
