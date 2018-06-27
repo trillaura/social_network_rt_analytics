@@ -3,24 +3,17 @@ package kafka_streams
 import java.util
 import java.util.Properties
 
-import com.twitter.bijection.Injection
-import com.twitter.bijection.avro.GenericAvroCodecs
-import org.apache.avro.Schema
 import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.consumer.{Consumer, ConsumerConfig, KafkaConsumer}
 import org.apache.kafka.common.PartitionInfo
 import org.apache.kafka.common.serialization.{ByteArrayDeserializer, LongDeserializer, StringDeserializer}
+import utils.KafkaAvroParser
 
 import scala.collection.JavaConverters._
 
 object ConsumerLauncher {
 
-  var id: Int = -1
-
-  var consumer: Consumer[String, String] = createConsumer()
   var consumerAvro: Consumer[String, Array[Byte]] = createAvroConsumer()
-
-  var consumerWordCount : Consumer[String, Long] = createConsumerWordCount()
 
   def createConsumer(): Consumer[String, String] = {
 
@@ -56,35 +49,14 @@ object ConsumerLauncher {
     new KafkaConsumer[String, Array[Byte]](props)
   }
 
-  def createConsumerWordCount(): Consumer[String, Long] = {
-
-    val props: Properties = new Properties()
-    props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-      Configuration.BOOTSTRAP_SERVERS)
-
-    props.put(ConsumerConfig.GROUP_ID_CONFIG,
-      Configuration.CONSUMER_GROUP_ID)
-
-    props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
-      new StringDeserializer().getClass.getName)
-    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-      new LongDeserializer().getClass.getName)
-
-    new KafkaConsumer[String, Long](props)
-  }
-
   // To consume data, we first need to subscribe to the topics of interest
-  def subscribeToTopic(): Unit = {
-    consumer.subscribe(List(Configuration.OUTPUT_TOPIC).asJava)
+  def subscribeToTopicsAvro(topics: List[String]): Unit = {
+    consumerAvro.subscribe(topics.asJava)
   }
-  def subscribeToTopicAvro(): Unit = {
-    consumerAvro.subscribe(List(Configuration.INPUT_TOPIC).asJava)
-  }
-
 
   def listTopics(): Unit = {
 
-    val topics: util.Map[String, util.List[PartitionInfo]] = consumer.listTopics()
+    val topics: util.Map[String, util.List[PartitionInfo]] = consumerAvro.listTopics()
     for (topicName <- topics.keySet().toArray()) {
 
       if (!topicName.toString.startsWith("__")) {
@@ -99,8 +71,7 @@ object ConsumerLauncher {
 
   }
 
-  def consumeAvro(): Unit = {
-    subscribeToTopicAvro()
+  def consumeAvroFriendships(id: Int): Unit = {
 
     var running: Boolean = true
     println("Avro Consumer " + id + " running...")
@@ -113,57 +84,119 @@ object ConsumerLauncher {
         consumerAvro.poll(1000)
 
       records.asScala.foreach(avroRecord => {
-        val parser: Schema.Parser = new Schema.Parser()
-        val schema: Schema = parser.parse(Configuration.FRIENDSHIP_SCHEMA)
-        val recordInjection: Injection[GenericRecord, Array[Byte]] = GenericAvroCodecs.toBinary(schema)
+        try {
+          val record: GenericRecord =
+            KafkaAvroParser.fromByteArrayToFriendshipRecord(avroRecord.value)
 
-        val record: GenericRecord = recordInjection.invert(avroRecord.value()).get
-
-        println("ts= " + record.get("ts")
-          + ", user_id1= " + record.get("user_id1")
-          + ", user_id2=" + record.get("user_id2"))
+          println("ts = " + record.get("ts")
+            + ", user_id1 = " + record.get("user_id1")
+            + ", user_id2 =" + record.get("user_id2"))
+        } catch {
+          case _:Throwable => println("err")
+        }
       })
     }
     consumerAvro.close()
   }
 
-  def consume(): Unit = {
-
-    subscribeToTopic()
+  def consumeAvroComments(id: Int): Unit = {
 
     var running: Boolean = true
-    println("Consumer " + id + " running...")
+    println("Avro Consumer " + id + " running...")
 
     while (running) {
 
       Thread.sleep(1000)
+
       val records =
-        consumer.poll(1000)
+        consumerAvro.poll(1000)
 
-      for (record <- records.asScala )
-        println("[" + id + "] Consuming record:" +
-        " (key=" + record.key() + ", " +
-        "val=" + record.value() + ")")
+      records.asScala.foreach(avroRecord => {
+        try {
+          val record: GenericRecord =
+            KafkaAvroParser.fromByteArrayToCommentRecord(avroRecord.value)
 
+          println("ts = " + record.get("ts")
+            + ", comment_id = " + record.get("comment_id")
+            + ", user_id =" + record.get("user_id")
+            + ", comment =" + record.get("comment")
+            + ", user =" + record.get("user")
+            + ", comment_replied =" + record.get("comment_replied")
+            + ", post_commented =" + record.get("post_commented")
+          )
+        } catch {
+          case _:Throwable => println("err")
+        }
+      })
     }
-    consumer.close()
+    consumerAvro.close()
+  }
+
+  def consumeAvroPosts(id: Int): Unit = {
+
+    var running: Boolean = true
+    println("Avro Consumer " + id + " running...")
+
+    while (running) {
+
+      Thread.sleep(1000)
+
+      val records =
+        consumerAvro.poll(1000)
+
+      records.asScala.foreach(avroRecord => {
+        try {
+          val record: GenericRecord =
+            KafkaAvroParser.fromByteArrayToPostRecord(avroRecord.value)
+
+          println("ts = " + record.get("ts")
+            + ", post_id = " + record.get("post_id")
+            + ", user_id =" + record.get("user_id")
+            + ", post =" + record.get("post")
+            + ", user =" + record.get("user")
+          )
+        } catch {
+          case _:Throwable => println("err")
+        }
+      })
+    }
+    consumerAvro.close()
   }
 
   def main(args: Array[String]): Unit = {
-    println("=== Listing topics === ")
-    listTopics()
-    println("=== === === === === === ")
 
-    KafkaManager.createTopic(Configuration.OUTPUT_TOPIC, 1, 1: Short)
+    val topics =  List(Configuration.FRIENDS_INPUT_TOPIC, Configuration.COMMENTS_INPUT_TOPIC, Configuration.POSTS_INPUT_TOPIC)
+
+    for (t <- topics) {
+      KafkaManager.createTopic(t, 1, 1: Short)
+    }
+
+    subscribeToTopicsAvro(topics)
+
+//    consumeAvroFriendships()
+//    consumeAvroComments()
+//    consumeAvroPosts()
 
     for (i <- 0 until Configuration.NUM_CONSUMERS-1) {
-      id = i
-      val c: Thread = new Thread{
-        override def run(): Unit ={
-          consume()
-        }
+      if (i == 0) {
+        new Thread {
+          override def run(): Unit = {
+            consumeAvroFriendships(i)
+          }
+        }.start()
+      } else if (i == 1) {
+        new Thread {
+          override def run(): Unit = {
+            consumeAvroComments(i)
+          }
+        }.start()
+      } else {
+        new Thread {
+          override def run(): Unit = {
+            consumeAvroPosts(i)
+          }
+        }.start()
       }
-      c.start()
     }
   }
 }

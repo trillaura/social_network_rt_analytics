@@ -19,7 +19,7 @@ object KafkaManager {
   val zkServer: String = Configuration.ZOOKEEPER_SERVERS
 
   def listTopics(): ListTopicsResult = {
-    val list = admin.listTopics(new ListTopicsOptions().timeoutMs(500).listInternal(true))
+    val list = admin.listTopics(new ListTopicsOptions().timeoutMs(1000).listInternal(true))
     list.names().get().asScala.foreach(t => println(t))
     list
   }

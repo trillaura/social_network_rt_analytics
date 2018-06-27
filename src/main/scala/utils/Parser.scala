@@ -4,6 +4,7 @@ import model.{Comment, Post, User, UserConnection}
 import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
 
+import scala.collection.mutable.ListBuffer
 import scala.io.Source
 
 object Parser {
@@ -15,10 +16,42 @@ object Parser {
   val TIMESTAMP_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
   private lazy val dateFormatter = DateTimeFormat.forPattern(TIMESTAMP_FORMAT)
 
+
+  def readFriendships(path: String) : ListBuffer[UserConnection] = {
+
+    var connections : ListBuffer[UserConnection] = ListBuffer()
+    for(l <- Source.fromFile(path).getLines()){
+      val parsed = parseUserConnection(l)
+      connections += parsed.get
+    }
+    connections
+  }
+
+  def readComments(path: String) : ListBuffer[Comment] = {
+
+    var comments : ListBuffer[Comment] = ListBuffer()
+    for(l <- Source.fromFile(path).getLines()){
+      val parsed = parseComment(l)
+      comments += parsed.get
+    }
+    comments
+  }
+
+  def readPosts(path: String) : ListBuffer[Post] = {
+
+    var posts : ListBuffer[Post] = ListBuffer()
+    for(l <- Source.fromFile(path).getLines()){
+      val parsed = parsePost(l)
+      posts += parsed.get
+    }
+    posts
+  }
+
   def readFile(path: String) : Unit = {
 
     for(l <- Source.fromFile(path).getLines()){
-      val parsed = parseComment(l)
+      val parsed = parseUserConnection(l)
+      println(parsed.get.toString)
       if(parsed.isEmpty){
         println(l)
       }
@@ -117,5 +150,11 @@ object Parser {
 
   def split(line: String): Array[String] = {
     line.split(PIPE_DELIMITER).map(_.trim)
+  }
+
+
+  def main(args: Array[String]): Unit = {
+    readComments("dataset/comments.dat")
+    readPosts("dataset/posts.dat")
   }
 }
