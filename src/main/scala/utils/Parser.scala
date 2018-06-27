@@ -145,7 +145,7 @@ object Parser {
   }
 
   def convertToDateTime(timeS: String) : DateTime = {
-      dateFormatter.parseDateTime(timeS).withZone(DateTimeZone.forID(DEFAULT_DATETIME_ZONE))
+      dateFormatter.parseDateTime(timeS).withZone(DateTimeZone.UTC)
   }
 
   def split(line: String): Array[String] = {
