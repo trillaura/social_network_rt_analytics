@@ -14,7 +14,9 @@ object DataProducer {
 
   def produceFriendships(frequency: Int) : Unit = {
 
-    KafkaManager.createTopic(Configuration.FRIENDS_INPUT_TOPIC, 1, 1: Short)
+    val topic = Configuration.FRIENDS_INPUT_TOPIC
+
+    KafkaManager.createTopic(topic, 1, 1: Short)
 
     ProducerLauncher.createAvroProducer()
 
@@ -37,7 +39,7 @@ object DataProducer {
       Thread.sleep(period)
 
       before = now
-      ProducerLauncher.produceAvro(bytes)
+      ProducerLauncher.produceAvro(bytes, topic)
 
     }
     ProducerLauncher.closeAvro()
@@ -45,7 +47,9 @@ object DataProducer {
 
   def produceComments(frequency: Int) : Unit = {
 
-    KafkaManager.createTopic(Configuration.COMMENTS_INPUT_TOPIC, 1, 1: Short)
+    val topic = Configuration.COMMENTS_INPUT_TOPIC
+
+    KafkaManager.createTopic(topic, 1, 1: Short)
 
     ProducerLauncher.createAvroProducer()
 
@@ -69,7 +73,7 @@ object DataProducer {
 
       before = now
 
-      ProducerLauncher.produceAvro(bytes)
+      ProducerLauncher.produceAvro(bytes, topic)
 
     }
     ProducerLauncher.closeAvro()
@@ -77,7 +81,9 @@ object DataProducer {
 
   def producePosts(frequency: Int) : Unit = {
 
-    KafkaManager.createTopic(Configuration.POSTS_INPUT_TOPIC, 1, 1: Short)
+    val topic = Configuration.POSTS_INPUT_TOPIC
+
+    KafkaManager.createTopic(topic, 1, 1: Short)
 
     ProducerLauncher.createAvroProducer()
 
@@ -101,7 +107,7 @@ object DataProducer {
 
       before = now
 
-      ProducerLauncher.produceAvro(bytes)
+      ProducerLauncher.produceAvro(bytes, topic)
 
     }
     ProducerLauncher.closeAvro()
