@@ -1,9 +1,10 @@
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.scala.extensions._
-import org.apache.flink.streaming.api.windowing.assigners.{SlidingEventTimeWindows, TumblingEventTimeWindows}
+import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows
 import org.apache.flink.streaming.api.windowing.time.Time
-import utils.{CountAggregation, Parser}
+import org.joda.time.{DateTime, DateTimeZone}
+import utils.{AddWindowStart, CountAggregation, Parser}
 
 object QueryOne {
 
@@ -14,25 +15,75 @@ object QueryOne {
 
   def main(args: Array[String]): Unit = {
 
-
-//        val res = data
-//          .mapWith { line => Parser.parseUserConnection(line).get }
-//          .mapWith(connection => (connection.timestamp.getMillis, connection.timestamp.hourOfDay().get(), 1))
-//          .assignAscendingTimestamps(tuple => tuple._1)
-//          .keyBy(1)
-//          .windowAll(TumblingEventTimeWindows.of(Time.hours(24)))
-//          .sum(2)
-//          .map(line => println(line._1, line._2, line._3))
-
-
-    val res = data
+    /*
+      Compute hourly count on 24 hours event time
+     */
+    val oneDayCnts = data
       .mapWith { line => Parser.parseUserConnection(line).get }
-      .mapWith(connection => (connection.timestamp.getMillis, connection.timestamp.hourOfDay().get(), 1))
-      .assignAscendingTimestamps(tuple => tuple._1)
+      // Assign event time
+      .assignAscendingTimestamps(connection => connection.timestamp.getMillis)
+      // Add field with hour index
+      .map(connection => (connection, connection.timestamp.hourOfDay().get()))
       .windowAll(TumblingEventTimeWindows.of(Time.hours(24)))
-      .aggregate(new CountAggregation())
-      .map( array => println(array.mkString(" ")))
+      // Count friendship in each hour and add enrich data with the window starting point
+      .aggregate(new CountAggregation(), new AddWindowStart())
 
+    oneDayCnts
+      .map(array => {
+        val startWindow = new DateTime(array._1, DateTimeZone.UTC)
+        (startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), array._2.mkString(" "))
+      })
+      .writeAsText("results/queryOneDaily")
+
+    /*
+      Compute hourly count on 7 days event time
+     */
+    val weeklyCnts = oneDayCnts
+      .windowAll(TumblingEventTimeWindows.of(Time.days(7)))
+      // Sum counters index by index to get the weekly count of friendship for hour
+      // Select as window starting point the maximum
+      .reduce((v1, v2) => {
+
+      var start = v1._1
+      if (v2._1 < v1._1) {
+        start = v2._1
+      }
+
+      val res = v1._2.zip(v2._2).map { case (x, y) => x + y }
+      (start, res)
+    })
+
+    weeklyCnts.map(array => {
+      val startWindow = new DateTime(array._1, DateTimeZone.UTC)
+      (startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), array._2.mkString(" "))
+    })
+      .writeAsText("results/queryOneWeekly")
+
+
+    /*
+      Compute hourly counts from the social network start
+     */
+    val totCnts = weeklyCnts.
+      // Aggregate data by hour
+      keyBy(tuple => {
+      new DateTime(tuple._1, DateTimeZone.UTC).hourOfDay()
+    })
+      .reduce((v1, v2) => {
+
+        var start = v1._1
+        if (v2._1 < v1._1) {
+          start = v2._1
+        }
+
+        val res = v1._2.zip(v2._2).map { case (x, y) => x + y }
+        (start, res)
+      })
+
+    totCnts.map(array => {
+      val startWindow = new DateTime(array._1, DateTimeZone.UTC)
+      (startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), array._2.mkString(" "))
+    })
+      .writeAsText("results/queryOneTot")
 
     env.execute()
   }
