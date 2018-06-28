@@ -106,6 +106,27 @@ object Parser {
     }
   }
 
+  def parseUserConnection(tuple: (String, String, String)) : Option[UserConnection] = {
+    try {
+      val timestampString = tuple._1
+      val firstUserID = tuple._2.toLong
+      val secondUserID = tuple._3.toLong
+
+      /* check integrity */
+      if(firstUserID < 0 ||  secondUserID < 0) {
+        return None
+      }
+
+      val firstUser = new User(firstUserID)
+      val secondUser = new User(secondUserID)
+
+      val timestamp = convertToDateTime(timestampString)
+      Some(new UserConnection(timestamp, firstUser, secondUser))
+    } catch {
+      case ex : Exception =>  ex.printStackTrace(); None
+    }
+  }
+
   def parseComment(line: String) : Option[Comment] = {
 
     var postComment = true

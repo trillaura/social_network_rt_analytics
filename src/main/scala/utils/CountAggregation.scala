@@ -8,8 +8,11 @@ import org.apache.flink.api.common.functions.AggregateFunction
   * One counter is initialized for each hour of the day
   */
 class CountAggregation extends AggregateFunction[(UserConnection, Int), Array[Int], Array[Int]] {
+
+  var array: Array[Int] = _
+
   override def createAccumulator(): Array[Int] = {
-    val array: Array[Int] = new Array[Int](24)
+    array = new Array[Int](24)
     array
   }
 

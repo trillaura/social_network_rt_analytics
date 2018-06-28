@@ -4,7 +4,7 @@ import org.apache.flink.streaming.api.scala.extensions._
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.joda.time.{DateTime, DateTimeZone}
-import utils.{AddWindowStart, CountAggregation, Parser}
+import utils._
 
 object QueryOne {
 
@@ -13,7 +13,9 @@ object QueryOne {
 
   val data: DataStream[String] = env.readTextFile("dataset/friendships.dat")
 
-  def main(args: Array[String]): Unit = {
+  def execute(): Unit = {
+    // Remove duplicates
+    val filtered = StreamFilter.filter(data)
 
     /*
       Compute hourly count on 24 hours event time
@@ -28,12 +30,13 @@ object QueryOne {
       // Count friendship in each hour and add enrich data with the window starting point
       .aggregate(new CountAggregation(), new AddWindowStart())
 
-    oneDayCnts
-      .map(array => {
-        val startWindow = new DateTime(array._1, DateTimeZone.UTC)
-        (startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), array._2.mkString(" "))
-      })
-      .writeAsText("results/queryOneDaily")
+
+//    oneDayCnts
+    //      .map(array => {
+    //        val startWindow = new DateTime(array._1, DateTimeZone.UTC)
+    //        (startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), array._2.mkString(" "))
+    //      })
+    //      .print()
 
     /*
       Compute hourly count on 7 days event time
@@ -53,38 +56,31 @@ object QueryOne {
       (start, res)
     })
 
-    weeklyCnts.map(array => {
-      val startWindow = new DateTime(array._1, DateTimeZone.UTC)
-      (startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), array._2.mkString(" "))
-    })
-      .writeAsText("results/queryOneWeekly")
+    //    weeklyCnts.map(array => {
+    //      val startWindow = new DateTime(array._1, DateTimeZone.UTC)
+    //      (startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), array._2.mkString(" "))
+    //    })
+    //      .print()
 
 
     /*
       Compute hourly counts from the social network start
      */
-    val totCnts = weeklyCnts.
-      // Aggregate data by hour
-      keyBy(tuple => {
-      new DateTime(tuple._1, DateTimeZone.UTC).hourOfDay()
-    })
-      .reduce((v1, v2) => {
+    val totCnts = weeklyCnts
+      .windowAll(TumblingEventTimeWindows.of(Time.days(31)))
+      // Sum counters index by index to get the weekly count of friendship for hour
+      // Select as window starting point the maximum
+      .process(new CountProcessWithState())
 
-        var start = v1._1
-        if (v2._1 < v1._1) {
-          start = v2._1
-        }
+        totCnts.map(array => {
+          val startWindow = new DateTime(array._1, DateTimeZone.UTC)
+          (startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), array._2.mkString(" "))
+        })
+          .print()
+  }
 
-        val res = v1._2.zip(v2._2).map { case (x, y) => x + y }
-        (start, res)
-      })
-
-    totCnts.map(array => {
-      val startWindow = new DateTime(array._1, DateTimeZone.UTC)
-      (startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), array._2.mkString(" "))
-    })
-      .writeAsText("results/queryOneTot")
-
+  def main(args: Array[String]): Unit = {
+    execute()
     env.execute()
   }
 }
