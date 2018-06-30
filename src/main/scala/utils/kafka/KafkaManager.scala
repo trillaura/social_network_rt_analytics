@@ -1,8 +1,9 @@
-package kafka_streams
+package utils.kafka
 
 import java.util.Properties
 
 import org.apache.kafka.clients.admin._
+
 import scala.collection.JavaConverters._
 
 

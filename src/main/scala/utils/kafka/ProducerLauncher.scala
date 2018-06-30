@@ -1,4 +1,4 @@
-package kafka_streams
+package utils.kafka
 
 import java.util.Properties
 
@@ -14,7 +14,6 @@ object ProducerLauncher {
   var producerAvro: Producer[String, Array[Byte]] = createAvroProducer()
 
   val parser: Schema.Parser = new Schema.Parser()
-  val schemaFriend: Schema = parser.parse(Configuration.FRIENDSHIP_SCHEMA)
 
   def createAvroProducer(): Producer[String, Array[Byte]] = {
 

@@ -1,8 +1,8 @@
-package kafka_streams
 
 import org.apache.avro.data.TimeConversions
 import org.apache.avro.generic.GenericData
-import utils.{KafkaAvroParser, Parser}
+import utils.Parser
+import utils.kafka.{Configuration, KafkaAvroParser, KafkaManager, ProducerLauncher}
 
 object DataProducer {
 
@@ -32,6 +32,8 @@ object DataProducer {
       val now : Long = c.timestamp.toInstant.getMillis
 
       period = computeInterval(frequency, before, now)
+
+      println(c.timestamp)
 
       val bytes: Array[Byte] =
         KafkaAvroParser.fromFriendshipRecordToByteArray(c.timestamp, c.firstUser.id, c.secondUser.id)
@@ -114,9 +116,9 @@ object DataProducer {
   }
 
   def main(args: Array[String]): Unit = {
-//    produceFriendships(10000000)
+    produceFriendships(10000000)
 //    produceComments(10000000)
-    producePosts(10000000)
+//    producePosts(10000000)
   }
 
 }

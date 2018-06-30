@@ -1,4 +1,4 @@
-package kafka_streams
+package utils.kafka
 
 import java.util
 import java.util.Properties
@@ -6,8 +6,7 @@ import java.util.Properties
 import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.consumer.{Consumer, ConsumerConfig, KafkaConsumer}
 import org.apache.kafka.common.PartitionInfo
-import org.apache.kafka.common.serialization.{ByteArrayDeserializer, LongDeserializer, StringDeserializer}
-import utils.KafkaAvroParser
+import org.apache.kafka.common.serialization.{ByteArrayDeserializer, StringDeserializer}
 
 import scala.collection.JavaConverters._
 
@@ -165,13 +164,12 @@ object ConsumerLauncher {
 
   def main(args: Array[String]): Unit = {
 
-    val topics =  List(Configuration.FRIENDS_INPUT_TOPIC, Configuration.COMMENTS_INPUT_TOPIC, Configuration.POSTS_INPUT_TOPIC)
 
-    for (t <- topics) {
+    for (t <- Configuration.OUTPUT_TOPICS) {
       KafkaManager.createTopic(t, 1, 1: Short)
     }
 
-    subscribeToTopicsAvro(topics)
+    subscribeToTopicsAvro(Configuration.OUTPUT_TOPICS)
 
 //    consumeAvroFriendships()
 //    consumeAvroComments()

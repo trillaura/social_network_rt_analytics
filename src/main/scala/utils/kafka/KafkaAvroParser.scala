@@ -1,15 +1,18 @@
-package utils
+package utils.kafka
 
 import com.twitter.bijection.Injection
 import com.twitter.bijection.avro.GenericAvroCodecs
-import kafka_streams.Configuration
 import org.apache.avro.Schema
+import org.apache.avro.data.TimeConversions
 import org.apache.avro.generic.{GenericData, GenericRecord}
 import org.joda.time.DateTime
 
 object KafkaAvroParser {
 
+  GenericData.get.addLogicalTypeConversion(new TimeConversions.TimestampConversion)
+
   val parser: Schema.Parser = new Schema.Parser()
+
   val schemaFriendship: Schema = parser.parse(Configuration.FRIENDSHIP_SCHEMA)
   val recordInjectionFriendship: Injection[GenericRecord, Array[Byte]] =
     GenericAvroCodecs.toBinary(schemaFriendship)
@@ -22,17 +25,14 @@ object KafkaAvroParser {
   val recordInjectionPost: Injection[GenericRecord, Array[Byte]] =
     GenericAvroCodecs.toBinary(schemaPost)
 
-  def fromByteArrayToFriendshipRecord(r: Array[Byte]) : GenericRecord = {
-      recordInjectionFriendship.invert(r).get
-  }
+  def fromByteArrayToFriendshipRecord(r: Array[Byte]) : GenericRecord =
+    recordInjectionFriendship.invert(r).get
 
-  def fromByteArrayToCommentRecord(r: Array[Byte]) : GenericRecord = {
+  def fromByteArrayToCommentRecord(r: Array[Byte]) : GenericRecord =
       recordInjectionComment.invert(r).get
-  }
 
-  def fromByteArrayToPostRecord(r: Array[Byte]) : GenericRecord = {
+  def fromByteArrayToPostRecord(r: Array[Byte]) : GenericRecord =
       recordInjectionPost.invert(r).get
-  }
 
   def fromFriendshipRecordToByteArray(ts: DateTime, user1: Long, user2: Long) : Array[Byte] = {
 

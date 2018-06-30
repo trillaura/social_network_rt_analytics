@@ -40,7 +40,8 @@ lazy val social_rt_analytics = (project in file("."))
       "com.101tec" % "zkclient" % "0.9",
       "org.apache.avro" % "avro" % "1.8.2",
       "com.twitter" % "bijection-avro_2.10" % "0.9.2",
-      "org.apache.flink" %% "flink-connector-kafka-0.11" % flinkVersion
+      "org.apache.flink" %% "flink-connector-kafka-0.11" % flinkVersion,
+      "com.lightbend" %% "kafka-streams-scala" % "0.2.1"
     ),
 
     libraryDependencies ++= flinkDependencies
