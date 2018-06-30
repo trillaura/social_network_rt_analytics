@@ -21,12 +21,12 @@ assembly / mainClass := Some("WordCount")
 val flinkVersion = "1.5.0"
 
 val flinkDependencies = Seq(
-  "org.apache.flink" %% "flink-scala" % flinkVersion ,
-  "org.apache.flink" %% "flink-streaming-scala" % flinkVersion )
+  "org.apache.flink" %% "flink-scala" % flinkVersion,
+  "org.apache.flink" %% "flink-streaming-scala" % flinkVersion)
 
 
 lazy val social_rt_analytics = (project in file("."))
-    .settings(
+  .settings(
 
     libraryDependencies ++= Seq(
       "org.scalactic" %% "scalactic" % "3.0.1",
@@ -41,14 +41,17 @@ lazy val social_rt_analytics = (project in file("."))
       "org.apache.avro" % "avro" % "1.8.2",
       "com.twitter" % "bijection-avro_2.10" % "0.9.2",
       "org.apache.flink" %% "flink-connector-kafka-0.11" % flinkVersion,
-      "com.lightbend" %% "kafka-streams-scala" % "0.2.1"
+      "com.lightbend" %% "kafka-streams-scala" % "0.2.1",
+      "org.apache.flink" %% "flink-connector-kafka-0.11" % flinkVersion,
+      "com.github.cb372" %% "scalacache-guava" % "0.24.2"
+
     ),
 
     libraryDependencies ++= flinkDependencies
-)
+  )
 
 // make run command include the provided dependencies
-Compile / run  := Defaults.runTask(Compile / fullClasspath,
+Compile / run := Defaults.runTask(Compile / fullClasspath,
   Compile / run / mainClass,
   Compile / run / runner
 ).evaluated
@@ -58,4 +61,4 @@ Compile / run / fork := true
 Global / cancelable := true
 
 // exclude Scala library from assembly
-assembly / assemblyOption  := (assembly / assemblyOption).value.copy(includeScala = false)
+assembly / assemblyOption := (assembly / assemblyOption).value.copy(includeScala = false)

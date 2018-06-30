@@ -1,18 +1,22 @@
 package utils
 
+import model.UserConnection
 import org.apache.flink.api.common.functions.AggregateFunction
 
 /**
-  * The accumulator is used to keep a running sum and a count. The [getResult] method
-  * computes the average.
+  * The accumulator is used to keep a running sum and a count.
+  * One counter is initialized for each hour of the day
   */
-class CountAggregation extends AggregateFunction[(Long, Int, Int), Array[Int], Array[Int]] {
+class CountAggregation extends AggregateFunction[(UserConnection, Int), Array[Int], Array[Int]] {
+
+  var array: Array[Int] = _
+
   override def createAccumulator(): Array[Int] = {
-    val array: Array[Int] = new Array[Int](24)
+    array = new Array[Int](24)
     array
   }
 
-  override def add(value: (Long, Int, Int), accumulator: Array[Int]): Array[Int] = {
+  override def add(value: (UserConnection, Int), accumulator: Array[Int]): Array[Int] = {
     accumulator(value._2) += 1
     accumulator
   }
