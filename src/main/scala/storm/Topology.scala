@@ -22,6 +22,10 @@ object Topology {
       .setNumTasks(3)
       .shuffleGrouping("spout")
 
+    builder.setBolt("filter", new Filtering)
+      .setNumTasks(3)
+      .shuffleGrouping("parser")
+
     /*
       HOURLY count ranking
       Count number of comment for each post and produces a rank
