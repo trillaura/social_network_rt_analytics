@@ -3,20 +3,19 @@ package utils.kafka
 import java.util
 import java.util.Properties
 
-import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.consumer.{Consumer, ConsumerConfig, KafkaConsumer}
 import org.apache.kafka.common.PartitionInfo
-import org.apache.kafka.common.serialization.{ByteArrayDeserializer, LongDeserializer}
+import org.apache.kafka.common.serialization.{ByteArrayDeserializer, LongDeserializer, StringDeserializer}
 import utils.Configuration
 import utils.redis.RedisManager
 
 import scala.collection.JavaConverters._
 
-class RedisResultsConsumer(cons_id: Int, t: String) extends Runnable {
+class RedisResultsConsumer(i: Int, t: String) extends Runnable {
 
   private val consumer: Consumer[Long, Array[Byte]] = createConsumer()
   private val topic: String = t
-  private val id: Int = cons_id
+  private val id: Int = i
   private var running: Boolean = true
 
 
@@ -62,10 +61,6 @@ class RedisResultsConsumer(cons_id: Int, t: String) extends Runnable {
 
   def run(): Unit = {
 
-    for (t <- Configuration.OUTPUT_TOPICS) {
-      KafkaManager.createTopic(t, 1, 1: Short)
-    }
-
     subscribeToTopic()
 
     while (running) {
@@ -75,18 +70,7 @@ class RedisResultsConsumer(cons_id: Int, t: String) extends Runnable {
       val records =
         consumer.poll(1000)
 
-      records.asScala.foreach(r => {
-        try {
-          val record: GenericRecord =
-            KafkaAvroParser.fromByteArrayToResultRecord(r.value, topic)
-
-          // TODO write on Redis sorted set keyed by stat name sorted by timestamp
-
-          RedisManager.writeAsyncInSortedSet(record, record.getSchema.getName)
-        } catch {
-          case _:Throwable => println("err")
-        }
-      })
+      RedisManager.writeAsyncInSortedSet(records, topic)
     }
     consumer.close()
   }

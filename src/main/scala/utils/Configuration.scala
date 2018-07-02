@@ -5,7 +5,7 @@ import org.joda.time.format.DateTimeFormat
 object Configuration {
 
   val REDIS_HOST: String = "localhost"
-  val REDIS_PORT: Int = 9379
+  val REDIS_PORT: Int = 6379
 
   val TIMESTAMP_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
   private lazy val dateFormatter = DateTimeFormat.forPattern(TIMESTAMP_FORMAT)
