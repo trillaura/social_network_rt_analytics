@@ -5,6 +5,7 @@ import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindo
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.joda.time.{DateTime, DateTimeZone}
 import utils._
+import utils.flink.{AddWindowStart, CountAggregation, CountProcessWithState, StreamFilter}
 
 object QueryOne {
 

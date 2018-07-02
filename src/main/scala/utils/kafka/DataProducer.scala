@@ -10,7 +10,7 @@ import org.apache.kafka.common.serialization.{ByteArraySerializer, StringSeriali
 import utils.{Configuration, Parser}
 
 
-class ProducerLauncher(t: String, f: Int) {
+class DataProducer(t: String, f: Int) {
 
   val producer_id: String = Configuration.PRODUCER_ID
   val topic: String = t

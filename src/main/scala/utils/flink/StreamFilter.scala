@@ -1,4 +1,5 @@
-package utils
+package utils.flink
+
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.scala.extensions._

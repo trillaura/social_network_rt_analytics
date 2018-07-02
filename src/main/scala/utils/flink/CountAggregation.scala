@@ -1,4 +1,4 @@
-package utils
+package utils.flink
 
 import model.UserConnection
 import org.apache.flink.api.common.functions.AggregateFunction

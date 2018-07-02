@@ -2,14 +2,14 @@
 import akka.actor.ActorSystem
 import com.redis._
 import utils.Configuration
-import utils.kafka.ResultsConsumer
+import utils.kafka.RedisResultsConsumer
 import utils.redis.RedisManager
 
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-object RedisConsumer {
+object RedisConsumerLauncher {
 
   /**
     * scala-redis is a blocking client for Redis. But you can develop high performance
@@ -92,7 +92,7 @@ object RedisConsumer {
     val CONSUMERS_NUM: Int = TOPICS.length
 
     for (i <- 0 to CONSUMERS_NUM) {
-      val c: Thread = new Thread{ new ResultsConsumer(i, TOPICS(i))}
+      val c: Thread = new Thread{ new RedisResultsConsumer(i, TOPICS(i))}
       c.start()
     }
 

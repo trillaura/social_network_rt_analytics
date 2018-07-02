@@ -8,10 +8,11 @@ import org.apache.kafka.clients.consumer.{Consumer, ConsumerConfig, KafkaConsume
 import org.apache.kafka.common.PartitionInfo
 import org.apache.kafka.common.serialization.{ByteArrayDeserializer, LongDeserializer}
 import utils.Configuration
+import utils.redis.RedisManager
 
 import scala.collection.JavaConverters._
 
-class ResultsConsumer(cons_id: Int, t: String) extends Runnable {
+class RedisResultsConsumer(cons_id: Int, t: String) extends Runnable {
 
   private val consumer: Consumer[Long, Array[Byte]] = createConsumer()
   private val topic: String = t
@@ -80,6 +81,8 @@ class ResultsConsumer(cons_id: Int, t: String) extends Runnable {
             KafkaAvroParser.fromByteArrayToResultRecord(r.value, topic)
 
           // TODO write on Redis sorted set keyed by stat name sorted by timestamp
+
+          RedisManager.writeAsyncInSortedSet(record, record.getSchema.getName)
         } catch {
           case _:Throwable => println("err")
         }

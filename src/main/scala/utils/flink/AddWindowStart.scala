@@ -1,4 +1,4 @@
-package utils
+package utils.flink
 
 import org.apache.flink.streaming.api.scala.function.ProcessAllWindowFunction
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
