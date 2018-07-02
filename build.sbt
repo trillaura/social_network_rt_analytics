@@ -1,3 +1,4 @@
+import sbt.Keys.libraryDependencies
 
 ThisBuild / scalaVersion := "2.11.8"
 
@@ -43,11 +44,21 @@ lazy val social_rt_analytics = (project in file("."))
       "org.apache.flink" %% "flink-connector-kafka-0.11" % flinkVersion,
       "com.lightbend" %% "kafka-streams-scala" % "0.2.1",
       "com.github.cb372" %% "scalacache-guava" % "0.24.2",
-      "net.debasishg" %% "redisclient" % "3.7"
+      "net.debasishg" %% "redisclient" % "3.7",
+      "org.apache.storm" % "storm-core" % "1.2.2" % "provided"
     ),
 
-    libraryDependencies ++= flinkDependencies
+    libraryDependencies ++= flinkDependencies,
+    libraryDependencies += "org.apache.storm" % "storm-core" % "1.2.2" % "provided" exclude("junit", "junit")
   )
+
+
+scalacOptions ++= Seq("-feature", "-deprecation", "-Yresolve-term-conflict:package")
+
+// When doing sbt run, fork a separate process.  This is apparently needed by storm.
+fork := true
+
+resolvers += "clojars" at "https://clojars.org/repo"
 
 // make run command include the provided dependencies
 Compile / run := Defaults.runTask(Compile / fullClasspath,
