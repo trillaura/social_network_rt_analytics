@@ -7,6 +7,8 @@ object Configuration {
   val REDIS_HOST: String = "localhost"
   val REDIS_PORT: Int = 6379
 
+  val STATE_STORE_NAME: String = "from-beginning-counters"
+
   val TIMESTAMP_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
   private lazy val dateFormatter = DateTimeFormat.forPattern(TIMESTAMP_FORMAT)
 

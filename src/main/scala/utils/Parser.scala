@@ -1,6 +1,7 @@
 package utils
 
 import model.{Comment, Post, User, UserConnection}
+import org.apache.avro.generic.GenericRecord
 import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
 
@@ -173,6 +174,22 @@ object Parser {
     line.split(PIPE_DELIMITER).map(_.trim)
   }
 
+
+  def getHour(ts: AnyRef) : Int = {
+    val date = Parser.convertToDateTime(ts.toString)
+    date.getHourOfDay
+  }
+
+  def getMinUserID(r: GenericRecord) : scala.Long =
+    math.min(r.get("user_id1").toString.toLong, r.get("user_id2").toString.toLong)
+
+  def getMaxUserID(r: GenericRecord) : scala.Long =
+    math.max(r.get("user_id1").toString.toLong, r.get("user_id2").toString.toLong)
+
+
+  def composeUserIDs(r: GenericRecord) : String = {
+    getMinUserID(r) + "-" + getMaxUserID(r)
+  }
 
   def main(args: Array[String]): Unit = {
     readComments("dataset/comments.dat")

@@ -1,13 +1,17 @@
 package kafka_streams
 
+import java.util
+import java.util.Map
 import java.util.Properties
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 
 import com.lightbend.kafka.scala.streams._
 import org.apache.avro.generic.GenericRecord
+import org.apache.kafka.common.metrics.KafkaMetric
 import org.apache.kafka.common.serialization._
 import org.apache.kafka.streams.{Consumed, KafkaStreams, StreamsConfig, Topology}
 import org.apache.kafka.streams.kstream.{Printed, Serialized, _}
+import org.apache.kafka.streams.state.{StoreBuilder, Stores}
 import utils.kafka.KafkaAvroParser
 import utils.{Configuration, Parser, SerializerAny}
 
@@ -47,6 +51,8 @@ object Query1 {
     props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG,
       Serdes.ByteArray().getClass.getName)
 
+//    props.put(StreamsConfig.METRICS_RECORDING_LEVEL_CONFIG, "DEBUG")
+
     props.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG, classOf[EventTimestampExtractor])
 
     // Records should be flushed every 10 seconds.
@@ -56,26 +62,15 @@ object Query1 {
     props
   }
 
-  def getHour(ts: AnyRef) : Int = {
-    val date = Parser.convertToDateTime(ts.toString)
-    date.getHourOfDay
-  }
-
-  def getMinUserID(r: GenericRecord) : scala.Long =
-    math.min(r.get("user_id1").toString.toLong, r.get("user_id2").toString.toLong)
-
-  def getMaxUserID(r: GenericRecord) : scala.Long =
-    math.max(r.get("user_id1").toString.toLong, r.get("user_id2").toString.toLong)
-
-
-  def composeUserIDs(r: GenericRecord) : String = {
-    getMinUserID(r) + "-" + getMaxUserID(r)
-  }
-
   def execute(): Unit = {
 
     val props: Properties = createAvroStreamProperties()
     val builder: StreamsBuilderS = new StreamsBuilderS()
+
+    val supplier = Stores.keyValueStoreBuilder(Stores.inMemoryKeyValueStore(Configuration.STATE_STORE_NAME), Serdes.String, Serdes.ByteArray())
+      .withLoggingEnabled(new util.HashMap[String,String]())
+
+    builder.addStateStore(supplier)
 
     // Construct a `KStream` from the input topic
     val records_original: KStreamS[String, Array[Byte]] =
@@ -87,8 +82,8 @@ object Query1 {
         .flatMap(
           (_, v) => {
             val r = KafkaAvroParser.fromByteArrayToFriendshipRecord(v)
-            val key = composeUserIDs(r)
-            val hour = getHour(r.get("ts"))
+            val key = Parser.composeUserIDs(r)
+            val hour = Parser.getHour(r.get("ts"))
 
             Iterable((key, hour))
           }
@@ -151,11 +146,66 @@ object Query1 {
       )
       .toStream
 
+
+    val resultsD7 =
+      resultsH24
+        .groupByKey(Serialized.`with`(longSerde, Serdes.ByteArray))
+        .windowedBy(TimeWindows.of(7*24*60*60*1000))
+        .reduce(
+          (v1, v2) => {
+            val value1 = SerializerAny.deserialize(v1).asInstanceOf[Array[scala.Long]]
+            if (DEBUG) {
+              println("value1 ")
+              value1.foreach(x => printf("%d.",x))
+              printf("\n")
+            }
+            val value2 = SerializerAny.deserialize(v2).asInstanceOf[Array[scala.Long]]
+
+            if (DEBUG) {
+              println("value2")
+              value1.foreach(x => printf("%d.",x))
+              printf("\n")
+            }
+
+            val res = value1.zip(value2).map{case (x,y) => x+y}
+
+            if (DEBUG) {
+              println("res")
+              res.foreach(x => printf("%d,",x))
+              printf("\n")
+            }
+            SerializerAny.serialize(res)
+          }
+        )
+        .toStream
+          .selectKey(
+            (k, _) => k.key()
+          )
+
+//    results7D
+    val resultsAllTime = resultsD7
+        .selectKey(
+          (_,_) => Configuration.STATE_STORE_NAME
+        )
+      .transform(
+        () => new FromBeginningCountersProcessor(100), Configuration.STATE_STORE_NAME
+    )
+
+
     if (DEBUG) {
       resultsH24.flatMap(
         (k, v) => {
           val value = SerializerAny.deserialize(v).asInstanceOf[Array[scala.Long]]
           printf("ts %d (", k)
+          value.foreach(x => printf("%d,", x))
+          printf(")\n")
+          Iterable()
+        }
+      )
+      resultsD7.flatMap(
+        (k, v) => {
+          val value = SerializerAny.deserialize(v).asInstanceOf[Array[scala.Long]]
+          printf("ts %s (", k)
           value.foreach(x => printf("%d,", x))
           printf(")\n")
           Iterable()
@@ -167,11 +217,14 @@ object Query1 {
 
     //         Write the `KTable<String, Long>` to the output topic.
     resultsH24.to(Configuration.FRIENDS_OUTPUT_TOPIC_H24)(Produced.`with`(longSerde, Serdes.ByteArray()))
+    resultsD7.to(Configuration.FRIENDS_OUTPUT_TOPIC_D7)(Produced.`with`(longSerde, Serdes.ByteArray()))
+    resultsAllTime.to(Configuration.FRIENDS_OUTPUT_TOPIC_ALLTIME)(Produced.`with`(Serdes.String, Serdes.ByteArray()))
 
     // Now that we have finished the definition of the processing topology we can actually run
     // it via `start()`.  The Streams application as a whole can be launched just like any
     // normal Java application that has a `main()` method.
     val topology: Topology = builder.build()
+
 
     if (DEBUG) { println(topology.describe)}
 
