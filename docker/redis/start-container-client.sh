@@ -1,2 +1,2 @@
 #!/bin/bash
-docker run --rm --network=kafka-network -it sickp/alpine-redis redis-cli -h redis-server
+docker run -it --rm --network=kafkastreams_default sickp/alpine-redis redis-cli -h redis-server

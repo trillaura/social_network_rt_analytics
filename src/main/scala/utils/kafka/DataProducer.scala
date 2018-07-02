@@ -10,7 +10,9 @@ import org.apache.kafka.common.serialization.{ByteArraySerializer, StringSeriali
 import utils.{Configuration, Parser}
 
 
-class DataProducer(t: String, f: Int) {
+class DataProducer(t: String, f: Int) extends Runnable {
+
+  GenericData.get.addLogicalTypeConversion(new TimeConversions.TimestampConversion)
 
   val producer_id: String = Configuration.PRODUCER_ID
   val topic: String = t
@@ -38,7 +40,7 @@ class DataProducer(t: String, f: Int) {
     val metadata: RecordMetadata = producer.send(record).get()
 
     // DEBUG
-    printf("sent avro record(key=%s value=%s) meta(partition=%d, offset=%d)\n",
+    printf("sent avro record(key=%s value=%s), meta(partition=%d, offset=%d)\n",
       record.key(), record.value(), metadata.partition(), metadata.offset())
   }
 
@@ -56,8 +58,6 @@ class DataProducer(t: String, f: Int) {
 
   def produceFriendships(frequency: Int) : Unit = {
 
-    GenericData.get.addLogicalTypeConversion(new TimeConversions.TimestampConversion)
-
     val friendships = Parser.readFriendships(Configuration.DATASET_FRIENDSHIPS)
 
     var before: Long = 0l
@@ -68,8 +68,6 @@ class DataProducer(t: String, f: Int) {
       val now : Long = c.timestamp.toInstant.getMillis
 
       period = computeInterval(frequency, before, now)
-
-      println(c.timestamp)
 
       val bytes: Array[Byte] =
         KafkaAvroParser.fromFriendshipRecordToByteArray(c.timestamp, c.firstUser.id, c.secondUser.id)
@@ -84,8 +82,6 @@ class DataProducer(t: String, f: Int) {
   }
 
   def produceComments(frequency: Int) : Unit = {
-
-    GenericData.get.addLogicalTypeConversion(new TimeConversions.TimestampConversion)
 
     val comments = Parser.readComments(Configuration.DATASET_COMMENTS)
 
@@ -112,8 +108,6 @@ class DataProducer(t: String, f: Int) {
   }
 
   def producePosts(frequency: Int) : Unit = {
-
-    GenericData.get.addLogicalTypeConversion(new TimeConversions.TimestampConversion)
 
     val posts = Parser.readPosts(Configuration.DATASET_POSTS)
 
