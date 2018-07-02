@@ -3,14 +3,13 @@ package kafka_streams
 import java.util.Properties
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 
-import com.lightbend.kafka.scala.streams.ImplicitConversions._
 import com.lightbend.kafka.scala.streams._
 import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.common.serialization._
 import org.apache.kafka.streams.{Consumed, KafkaStreams, StreamsConfig, Topology}
 import org.apache.kafka.streams.kstream.{Printed, Serialized, _}
-import utils.kafka.{Configuration, KafkaAvroParser}
-import utils.{Parser, SerializerAny}
+import utils.kafka.KafkaAvroParser
+import utils.{Configuration, Parser, SerializerAny}
 
 
 object Query1 {
@@ -167,7 +166,7 @@ object Query1 {
     if (DEBUG) { resultsH24.print(Printed.toSysOut[scala.Long, Array[Byte]]) }
 
     //         Write the `KTable<String, Long>` to the output topic.
-    resultsH24.to(Configuration.FRIENDS_OUTPUT_TOPIC)(Produced.`with`(longSerde, Serdes.ByteArray()))
+    resultsH24.to(Configuration.FRIENDS_OUTPUT_TOPIC_H24)(Produced.`with`(longSerde, Serdes.ByteArray()))
 
     // Now that we have finished the definition of the processing topology we can actually run
     // it via `start()`.  The Streams application as a whole can be launched just like any
