@@ -9,7 +9,7 @@ import org.apache.flink.streaming.api.scala.extensions._
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.joda.time.{DateTime, DateTimeZone}
 import utils._
-import utils.flink.{AddWindowStart, CountAggregation, CountProcessWithState, StreamFilter}
+import utils.flink.{AddWindowStart, CountAggregation, CountProcessWithState}
 
 object QueryOne {
 
