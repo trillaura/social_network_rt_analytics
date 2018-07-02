@@ -1,15 +1,11 @@
-import java.text.SimpleDateFormat
-import java.time.format.DateTimeFormatter
-
-import model.UserConnection
-import org.apache.flink.api.common.functions.{ReduceFunction, RichFlatMapFunction}
+import org.apache.flink.api.common.functions.ReduceFunction
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.scala.extensions._
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.joda.time.{DateTime, DateTimeZone}
 import utils._
-import utils.flink.{AddWindowStart, CountAggregation, CountProcessWithState}
+import utils.flink.{AddWindowStart, CountAggregation, CountProcessWithState, FilterFunction}
 
 object QueryOne {
 
