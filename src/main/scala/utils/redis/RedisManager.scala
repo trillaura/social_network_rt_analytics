@@ -1,6 +1,7 @@
 package utils.redis
 
 import com.redis.{RedisClient, RedisClientPool}
+import org.apache.avro.generic.GenericRecord
 import utils.Configuration
 
 object RedisManager {
@@ -12,4 +13,10 @@ object RedisManager {
 
   def getDefaultRedisClientPool : RedisClientPool = this.redisClientPool
 
+  def writeAsyncInSortedSet(r: GenericRecord, name: String) : Unit = {
+
+    val value = r.toString
+
+//    this.redisClient.set()
+  }
 }

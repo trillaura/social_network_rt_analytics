@@ -1,4 +1,4 @@
-package utils
+package utils.flink
 
 import org.apache.flink.api.common.state.{MapState, MapStateDescriptor}
 import org.apache.flink.runtime.state.{FunctionInitializationContext, FunctionSnapshotContext}
