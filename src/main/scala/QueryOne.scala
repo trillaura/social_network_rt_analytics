@@ -1,11 +1,14 @@
+import java.util.Properties
+
 import org.apache.flink.api.common.functions.ReduceFunction
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.scala.extensions._
 import org.apache.flink.streaming.api.windowing.time.Time
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer011
 import org.joda.time.{DateTime, DateTimeZone}
 import utils._
-import utils.flink.{AddWindowStart, CountAggregation, CountProcessWithState, FilterFunction}
+import utils.flink._
 
 object QueryOne {
 
@@ -14,19 +17,27 @@ object QueryOne {
 
   val data: DataStream[String] = env.readTextFile("dataset/friendships.dat")
 
-  def execute(ds: DataStream[String]): Unit = {
+  val properties = new Properties()
+  properties.setProperty("bootstrap.servers", Configuration.BOOTSTRAP_SERVERS)
+  properties.setProperty("zookeeper.connect", Configuration.ZOOKEEPER_SERVERS)
+  properties.setProperty("group.id", Configuration.CONSUMER_GROUP_ID)
+
+  private val stream = env
+    .addSource(new FlinkKafkaConsumer011(Configuration.FRIENDS_INPUT_TOPIC, new FriedshipAvroDeserializationSchema, properties))
+
+
+  def execute(ds: DataStream[(String, String, String)]): Unit = {
 
     /*
       Remove duplicates for bidirectional friendships
     */
-    val filtered = data.
-      mapWith(line => {
+    val filtered = ds
+      .mapWith(str => {
         // Put first the biggest user's id
-        val str = line.split("\\|")
-        if (str(1).toLong > str(2).toLong)
-          (str(0), str(1), str(2))
+        if (str._2.toLong > str._3.toLong)
+          (str._1, str._2, str._3)
         else
-          (str(0), str(2), str(1))
+          (str._1, str._3, str._2)
       })
       // Assign event time
       .assignAscendingTimestamps(tuple => Parser.convertToDateTime(tuple._1).getMillis)
@@ -94,14 +105,14 @@ object QueryOne {
       val startWindow = new DateTime(array._1, DateTimeZone.UTC)
       (startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), array._2.mkString(" "))
     })
-      .writeAsText("results/tot_filtered")
-
+      .print()
 
   }
 
 
   def main(args: Array[String]): Unit = {
-    execute(data)
+    execute(stream)
+    //    stream.print()
     env.execute()
   }
 }
