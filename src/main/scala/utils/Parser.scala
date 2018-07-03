@@ -59,6 +59,17 @@ object Parser {
     }
   }
 
+  def fileLinesAsList(path: String) : ListBuffer[String] = {
+
+    var list : ListBuffer[String] = ListBuffer()
+    for(l <- Source.fromFile(path).getLines()){
+      list += l
+    }
+
+    list
+
+  }
+
   def parsePost(line: String) : Option[Post] = {
     val cols = split(line)
     if(cols.length != 5){ return None }
