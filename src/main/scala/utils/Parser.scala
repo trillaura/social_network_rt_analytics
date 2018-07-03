@@ -4,6 +4,7 @@ import model.{Comment, Post, User, UserConnection}
 import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
 
+import scala.collection.mutable.ListBuffer
 import scala.io.Source
 
 object Parser {
@@ -23,6 +24,17 @@ object Parser {
         println(l)
       }
     }
+  }
+
+  def fileLinesAsList(path: String) : ListBuffer[String] = {
+
+    var list : ListBuffer[String] = ListBuffer()
+    for(l <- Source.fromFile(path).getLines()){
+      list += l
+    }
+
+    list
+
   }
 
   def parsePost(line: String) : Option[Post] = {
