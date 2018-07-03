@@ -31,10 +31,10 @@ object Topology {
       Count number of comment for each post and produces a rank
      */
 
-    builder.setBolt("hourlyCount",
-      new WindowCountBolt().withTumblingWindow(Duration.minutes(60)))
-      .setNumTasks(3)
-      .fieldsGrouping("parser", new Fields("postId"))
+    //    builder.setBolt("hourlyCount",
+    //      new WindowCountBolt().withTumblingWindow(Duration.minutes(60)))
+    //      .setNumTasks(3)
+    //      .fieldsGrouping("parser", new Fields("postId"))
 
     builder.setBolt("HourlyPartialRank", new PartialRank)
       .setNumTasks(3)
@@ -49,9 +49,9 @@ object Topology {
      Count number of comment for each post and produces a rank
     */
 
-    builder.setBolt("dailyCount", new WindowCountBolt().withTumblingWindow(Duration.hours(24)))
-      .setNumTasks(3)
-      .fieldsGrouping("hourlyCount", new Fields("postID"))
+    //    builder.setBolt("dailyCount", new WindowCountBolt().withTumblingWindow(Duration.hours(24)))
+    //      .setNumTasks(3)
+    //      .fieldsGrouping("hourlyCount", new Fields("postID"))
 
     builder.setBolt("dailyPartialRank", new PartialRank)
       .setNumTasks(3)
@@ -66,9 +66,9 @@ object Topology {
      Count number of comment for each post and produces a rank
     */
 
-    builder.setBolt("weeklyCount", new WindowCountBolt().withTumblingWindow(Duration.days(7)))
-      .setNumTasks(3)
-      .fieldsGrouping("dailyCount", new Fields("postID"))
+    //    builder.setBolt("weeklyCount", new WindowCountBolt().withTumblingWindow(Duration.days(7)))
+    //      .setNumTasks(3)
+    //      .fieldsGrouping("dailyCount", new Fields("postID"))
 
     builder.setBolt("weeklyPartialRank", new PartialRank)
       .setNumTasks(3)

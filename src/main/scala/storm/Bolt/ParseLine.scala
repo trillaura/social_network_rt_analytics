@@ -22,7 +22,7 @@ class ParseLine extends BaseRichBolt {
     val str: Array[String] = line.split("\\|")
 
     val value = new Values()
-    value.add(str(0)) // timestamo
+    value.add(str(0)) // timestamp
     value.add(str(1)) // comment id
     value.add(str(2)) // user id
     value.add(str(3)) // comment
