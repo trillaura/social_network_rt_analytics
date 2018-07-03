@@ -1,8 +1,10 @@
-package kafka_streams
+package utils.kafka
 
 import java.util.Properties
 
 import org.apache.kafka.clients.admin._
+import utils.Configuration
+
 import scala.collection.JavaConverters._
 
 
@@ -19,7 +21,7 @@ object KafkaManager {
   val zkServer: String = Configuration.ZOOKEEPER_SERVERS
 
   def listTopics(): ListTopicsResult = {
-    val list = admin.listTopics(new ListTopicsOptions().timeoutMs(500).listInternal(true))
+    val list = admin.listTopics(new ListTopicsOptions().timeoutMs(1000).listInternal(true))
     list.names().get().asScala.foreach(t => println(t))
     list
   }

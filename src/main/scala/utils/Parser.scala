@@ -1,6 +1,7 @@
 package utils
 
 import model.{Comment, Post, User, UserConnection}
+import org.apache.avro.generic.GenericRecord
 import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
 
@@ -16,10 +17,42 @@ object Parser {
   val TIMESTAMP_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
   private lazy val dateFormatter = DateTimeFormat.forPattern(TIMESTAMP_FORMAT)
 
+
+  def readFriendships(path: String) : ListBuffer[UserConnection] = {
+
+    var connections : ListBuffer[UserConnection] = ListBuffer()
+    for(l <- Source.fromFile(path).getLines()){
+      val parsed = parseUserConnection(l)
+      connections += parsed.get
+    }
+    connections
+  }
+
+  def readComments(path: String) : ListBuffer[Comment] = {
+
+    var comments : ListBuffer[Comment] = ListBuffer()
+    for(l <- Source.fromFile(path).getLines()){
+      val parsed = parseComment(l)
+      comments += parsed.get
+    }
+    comments
+  }
+
+  def readPosts(path: String) : ListBuffer[Post] = {
+
+    var posts : ListBuffer[Post] = ListBuffer()
+    for(l <- Source.fromFile(path).getLines()){
+      val parsed = parsePost(l)
+      posts += parsed.get
+    }
+    posts
+  }
+
   def readFile(path: String) : Unit = {
 
     for(l <- Source.fromFile(path).getLines()){
-      val parsed = parseComment(l)
+      val parsed = parseUserConnection(l)
+      println(parsed.get.toString)
       if(parsed.isEmpty){
         println(l)
       }
@@ -85,6 +118,27 @@ object Parser {
     }
   }
 
+  def parseUserConnection(tuple: (String, String, String)) : Option[UserConnection] = {
+    try {
+      val timestampString = tuple._1
+      val firstUserID = tuple._2.toLong
+      val secondUserID = tuple._3.toLong
+
+      /* check integrity */
+      if(firstUserID < 0 ||  secondUserID < 0) {
+        return None
+      }
+
+      val firstUser = new User(firstUserID)
+      val secondUser = new User(secondUserID)
+
+      val timestamp = convertToDateTime(timestampString)
+      Some(new UserConnection(timestamp, firstUser, secondUser))
+    } catch {
+      case ex : Exception =>  ex.printStackTrace(); None
+    }
+  }
+
   def parseComment(line: String) : Option[Comment] = {
 
     var postComment = true
@@ -124,10 +178,32 @@ object Parser {
   }
 
   def convertToDateTime(timeS: String) : DateTime = {
-      dateFormatter.parseDateTime(timeS).withZone(DateTimeZone.UTC)
+      dateFormatter.parseDateTime(timeS).withZone(DateTimeZone.forID(DEFAULT_DATETIME_ZONE))
   }
 
   def split(line: String): Array[String] = {
     line.split(PIPE_DELIMITER).map(_.trim)
+  }
+
+
+  def getHour(ts: AnyRef) : Int = {
+    val date = Parser.convertToDateTime(ts.toString)
+    date.getHourOfDay
+  }
+
+  def getMinUserID(r: GenericRecord) : scala.Long =
+    math.min(r.get("user_id1").toString.toLong, r.get("user_id2").toString.toLong)
+
+  def getMaxUserID(r: GenericRecord) : scala.Long =
+    math.max(r.get("user_id1").toString.toLong, r.get("user_id2").toString.toLong)
+
+
+  def composeUserIDs(r: GenericRecord) : String = {
+    getMinUserID(r) + "-" + getMaxUserID(r)
+  }
+
+  def main(args: Array[String]): Unit = {
+    readComments("dataset/comments.dat")
+    readPosts("dataset/posts.dat")
   }
 }
