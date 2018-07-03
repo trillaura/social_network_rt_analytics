@@ -10,7 +10,7 @@ case class RankElement[A](id: A, score: Int) extends Ordered[RankElement[A]] wit
 class RankingBoard[A](k: Int) extends Serializable {
   def this() = this(10)
 
-  private var K = k
+  var K = k
   private val map : mutable.HashMap[A, Int] = mutable.HashMap()
   //private var topKList :ListBuffer[RankElement] = ListBuffer()
 
@@ -20,6 +20,7 @@ class RankingBoard[A](k: Int) extends Serializable {
     }
   }
 
+  private var rankChanged : Boolean = false
 
   //private var topKTreeSet : mutable.TreeSet[RankElement[A]] = mutable.TreeSet[RankElement[A]]()
   /* keeps min in treeset */
@@ -68,6 +69,17 @@ class RankingBoard[A](k: Int) extends Serializable {
   }
   */
 
+  def rankHasChanged() : Boolean = {
+    if(rankChanged){
+      rankChanged = false
+      true
+    } else false
+  }
+
+  def isEmpty() : Boolean = {
+    map.isEmpty
+  }
+
   def topK(): List[RankElement[A]] = {
     listBuffer.sortWith(_ >= _).toList
   }
@@ -91,6 +103,7 @@ class RankingBoard[A](k: Int) extends Serializable {
   def updateTop(key: A, value: Int): Unit = {
     if(listBuffer.isEmpty){
       listBuffer += RankElement(key,value)
+      rankChanged = true
       return
     }
 
@@ -107,13 +120,16 @@ class RankingBoard[A](k: Int) extends Serializable {
     if(toRemove != null) {
       listBuffer -= toRemove
       listBuffer += RankElement(key,value)
+      rankChanged = true
     }
 
     if(listBuffer.size >= k){
       listBuffer -= findListMin()
+      rankChanged = true
     }
     if(toRemove == null) {
       listBuffer += RankElement(key, value)
+      rankChanged = true
     }
   }
 

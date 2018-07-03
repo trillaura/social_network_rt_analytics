@@ -100,7 +100,7 @@ object Topology {
     conf.setNumWorkers(3)
 
     /* Update numWorkers using command-line received parameters */
-    if (args.length eq 2)
+    if (args.length == 2)
       if (args(1) != null) {
         val numWorkers = args(1).toInt
         conf.setNumWorkers(numWorkers)

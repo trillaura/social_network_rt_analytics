@@ -9,6 +9,26 @@ import scala.collection.mutable.ListBuffer
 import scala.io.Source
 
 object Parser {
+  def userIDFromComment(line: String): Long = {
+    val cols = split(line)
+    cols(2).toLong
+  }
+
+  def userIDFromPost(line: String) : Long = {
+    val cols = split(line)
+    cols(2).toLong
+  }
+
+  def userIDFromFriendship(line: String): Long = {
+    val cols = split(line)
+    cols(1).toLong
+  }
+
+  def extractTimeStamp(line: String): Long = {
+    val cols = split(line)
+    convertToDateTime(cols(0)).getMillis
+  }
+
 
   /* NOTE: needs to be a char. Single ' */
   val PIPE_DELIMITER = '|'

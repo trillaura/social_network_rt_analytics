@@ -45,11 +45,11 @@ lazy val social_rt_analytics = (project in file("."))
       "com.lightbend" %% "kafka-streams-scala" % "0.2.1",
       "com.github.cb372" %% "scalacache-guava" % "0.24.2",
       "net.debasishg" %% "redisclient" % "3.7",
-      "org.apache.storm" % "storm-core" % "1.2.2" % "provided"
     ),
 
     libraryDependencies ++= flinkDependencies,
-    libraryDependencies += "org.apache.storm" % "storm-core" % "1.2.2" % "provided" exclude("junit", "junit")
+    libraryDependencies += "org.apache.storm" % "storm-core" % "1.2.2" exclude("junit", "junit")
+
   )
 
 
