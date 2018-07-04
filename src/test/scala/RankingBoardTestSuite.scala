@@ -92,6 +92,30 @@ class RankingBoardTestSuite extends FlatSpec {
     assert(topK(4).id == 1)
   }
 
+  it should "merge correctly with other board" in {
+
+    val firstRankingBoard = new RankingBoard[Long](5)
+    val secondRankingBoard = new RankingBoard[Long](5)
+
+
+    firstRankingBoard.incrementScore(1)
+    firstRankingBoard.incrementScore(1)
+    firstRankingBoard.incrementScoreBy(2, 10)
+    firstRankingBoard.incrementScoreBy(3,5)
+    firstRankingBoard.incrementScore(4)
+    firstRankingBoard.incrementScore(5)
+
+    secondRankingBoard.incrementScoreBy(6,100)
+    secondRankingBoard.incrementScoreBy(7, 999)
+    secondRankingBoard.incrementScoreBy(8,11)
+    secondRankingBoard.incrementScoreBy(9,6)
+    secondRankingBoard.incrementScoreBy(10,4)
+
+    val mergedRankingBoard = firstRankingBoard.merge(secondRankingBoard)
+    mergedRankingBoard.printTopK()
+
+  }
+
 
 
 }

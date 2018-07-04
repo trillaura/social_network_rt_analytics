@@ -26,7 +26,11 @@ object Parser {
 
   def extractTimeStamp(line: String): Long = {
     val cols = split(line)
-    convertToDateTime(cols(0)).getMillis
+    val timestamp = convertToDateTime(cols(0)).getMillis
+    if(timestamp < 0){
+      println("Negative timestamp")
+    }
+    timestamp
   }
 
 
@@ -195,6 +199,10 @@ object Parser {
     } catch {
       case ex : Exception =>  ex.printStackTrace(); None
     }
+  }
+
+  def millisFromStringDate(timeStr : String) : Long = {
+    convertToDateTime(timeStr).getMillis
   }
 
   def convertToDateTime(timeS: String) : DateTime = {

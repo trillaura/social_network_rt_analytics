@@ -37,13 +37,34 @@ object QueryThree {
 
   def main(args: Array[String]) : Unit = {
 
-
-    val union = friendshipData.union(commentsData, postsData)
+    val union = postsData.union(commentsData, friendshipData)
       .keyBy(_._1)
       .window(TumblingEventTimeWindows.of(Time.days(7)))
       .aggregate(new MyAggregate, new MyProcess)
       .process(new RankProcessFunction)
+      .setParallelism(2)
+      .process(new MergeRankProcessFunction)
       .writeAsText("results/q3")
+
+
+    /*val union = postsData.union(commentsData, friendshipData)
+      .assignAscendingTimestamps(tuple => Parser.extractTimeStamp(tuple._2))
+      .map{ tuple =>
+        var outTuple = (1L, 1)
+        tuple._1 match {
+          case 1 => outTuple = (Parser.userIDFromFriendship(tuple._2), 1)
+          case 2 => outTuple = (Parser.userIDFromComment(tuple._2), 1)
+          case 3 => outTuple = (Parser.userIDFromPost(tuple._2), 1)
+        }
+        outTuple
+      }
+      .keyBy(_._1)
+      .window(TumblingEventTimeWindows.of(Time.days(7)))
+      .aggregate(new MyAggregate, new MyProcess)
+      .process(new RankProcessFunction)
+      .setParallelism(2)
+      .process(new MergeRankProcessFunction)
+      .writeAsText("results/q3") */
 
     /*friendshipData.connect(union)
       .map(new CoMapFunction[UserConnection, String, String] {
@@ -65,20 +86,42 @@ object QueryThree {
     println("Query 3 Execution took " + executingResults.getNetRuntime(TimeUnit.SECONDS) + " seconds")
   }
 
+  class MergeRankProcessFunction extends ProcessFunction[RankingResult[Long], RankingResult[Long]]{
+
+    println("Merge Rank Operator in Thread " + Thread.currentThread().getId)
+    override def processElement(value: RankingResult[Long],
+                                ctx: ProcessFunction[RankingResult[Long], RankingResult[Long]]#Context,
+                                out: Collector[RankingResult[Long]]): Unit = {
+      out.collect(value)
+    }
+  }
+
   class RankProcessFunction extends ProcessFunction[(Long, Int), RankingResult[Long]]{
 
     var lastWatermark : Long = 0
-    val rankingBoard : RankingBoard[Long] = new RankingBoard[Long]()
+    var rankingBoard : RankingBoard[Long] = _
 
     override def processElement(value: (Long, Int), ctx: ProcessFunction[(Long, Int), RankingResult[Long]]#Context, out: Collector[RankingResult[Long]]): Unit = {
+
+
+      if(rankingBoard == null){
+        rankingBoard = new RankingBoard[Long]()
+        println("Ranking board init for thread " + Thread.currentThread().getId)
+
+      }
       val currentWatermark = ctx.timerService().currentWatermark()
+      if(currentWatermark < 0) {
+        println("Watermark is negative")
+      }
 
       rankingBoard.incrementScoreBy(value._1, value._2)
 
       if(rankingBoard.rankHasChanged()) {
         val ranking = rankingBoard.topK()
         if(ranking.size == rankingBoard.K) {
-          out.collect(new RankingResult[Long](new DateTime(currentWatermark).toDateTime(DateTimeZone.UTC).toString(), ranking))
+          val output = new RankingResult[Long](new DateTime(currentWatermark).toDateTime(DateTimeZone.UTC).toString(), ranking, rankingBoard.K)
+          println("Operator " + Thread.currentThread().getId + " output " +output)
+          out.collect(output)
         }
       }
       //println("Score of " + rankingBoard.scoreOf(120260221010L))

@@ -12,8 +12,8 @@ import storm.utils.Window
 import java.util.Calendar
 import java.util.GregorianCalendar
 
-class WindowCountBolt extends BaseRichBolt {
-
+class WindowCountBolt {// extends BaseRichBolt {
+/*
   @transient
   private lazy val windowConfiguration: util.HashMap[String, Duration] = new util.HashMap[String, Duration]()
   private var _collector: OutputCollector = _
@@ -149,5 +149,5 @@ class WindowCountBolt extends BaseRichBolt {
 
   override def declareOutputFields(declarer: OutputFieldsDeclarer): Unit = {
     declarer.declare(new Fields("ts", "postID", "count", "start"))
-  }
+  }*/
 }
