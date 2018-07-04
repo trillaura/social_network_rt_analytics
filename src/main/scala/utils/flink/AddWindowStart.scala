@@ -8,8 +8,9 @@ class AddAllWindowStart extends ProcessAllWindowFunction[Array[Int], (Long, Arra
 
 
   override def process(context: Context, elements: Iterable[Array[Int]], out: Collector[(Long, Array[Int])]): Unit = {
-    for (elem <- elements)
+    for (elem <- elements) {
       out.collect(context.window.getStart, elem)
+    }
   }
 }
 

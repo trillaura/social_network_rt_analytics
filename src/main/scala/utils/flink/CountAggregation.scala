@@ -1,7 +1,7 @@
 package utils.flink
 
 import org.apache.flink.api.common.functions.AggregateFunction
-import org.joda.time.{DateTime, DateTimeZone}
+import utils.Parser
 
 /**
   * The accumulator is used to keep a running sum and a count.
@@ -15,8 +15,7 @@ class CountAggregation extends AggregateFunction[Long, Array[Int], Array[Int]] {
   }
 
   override def add(value: Long, accumulator: Array[Int]): Array[Int] = {
-    val date = new DateTime(value, DateTimeZone.UTC)
-    val hour = date.getHourOfDay
+    val hour: Int = Parser.convertToDateTime(value).hourOfDay.get()
     accumulator(hour) += 1
     accumulator
   }

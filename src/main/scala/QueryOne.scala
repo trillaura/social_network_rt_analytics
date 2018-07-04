@@ -47,20 +47,20 @@ object QueryOne {
 
 
     val dailyCount = filtered
-      .mapWith(tuple => Parser.convertToDateTime(tuple._1).getMillis)
+      .mapWith(tuple => new DateTime(tuple._1).getMillis)
       .assignAscendingTimestamps(ts => ts)
-      .timeWindowAll(Time.hours(24), Time.minutes(1))
+      .timeWindowAll(Time.hours(24), Time.minutes(5))
       .aggregate(new CountAggregation, new AddAllWindowStart)
       .mapWith(res => {
-        val startWindow = new DateTime(res._1, DateTimeZone.UTC)
-        println("daily ", startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), res._2.mkString(" "))
+        val startWindow = new DateTime(res._1)
+        println("daily - " + res._1, res._2.mkString(" "))
       })
 
 
     val week = filtered
       .mapWith(tuple => Parser.convertToDateTime(tuple._1).getMillis)
       .assignAscendingTimestamps(ts => ts)
-      .timeWindowAll(Time.days(7), Time.minutes(5))
+      .timeWindowAll(Time.days(7), Time.hours(1))
       .aggregate(new CountAggregation, new AddAllWindowStart)
       .mapWith(res => {
         val startWindow = new DateTime(res._1, DateTimeZone.UTC)
@@ -68,14 +68,21 @@ object QueryOne {
       })
 
 
+    val global = filtered
+      .mapWith(tuple => Parser.convertToDateTime(tuple._1).getMillis)
+      .assignAscendingTimestamps(ts => ts)
+      .timeWindowAll(Time.days(7), Time.minutes(5))
+      .process(new CountProcessWithStateSliding)
+      .mapWith(res => {
+        val startWindow = new DateTime(res._1, DateTimeZone.UTC)
+        println("global  ", startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), res._2.mkString(" "))
+      })
 
   }
 
   def executeOnTumblingWindow(ds: DataStream[(String, String, String)]): Unit = {
 
-    /*
-      Remove duplicates for bidirectional friendships
-    */
+    // Remove bidirectional friendships
     val filtered = ds
       .mapWith(str => {
         // Put first the biggest user's id
@@ -85,7 +92,6 @@ object QueryOne {
           (str._1, str._3, str._2)
       })
       .keyBy(conn => (conn._2, conn._3))
-      // Apply filtering
       .flatMap(new FilterFunction)
 
 
@@ -142,39 +148,7 @@ object QueryOne {
   }
 
   def main(args: Array[String]): Unit = {
-    executeOnTumblingWindow(stream)
+    execute(stream)
     env.execute()
-  }
-}
-
-
-class MyWindowFunction extends ProcessAllWindowFunction[Tuple1[Array[Int]], (Long, Array[Int]), TimeWindow] {
-  override def process(context: Context, elements: Iterable[Tuple1[Array[Int]]], out: Collector[(Long, Array[Int])]): Unit = {
-    for (elem <- elements) {
-      out.collect((context.window.getStart, elem._1))
-    }
-  }
-}
-
-class MyReduceFunction extends ReduceFunction[Tuple1[Array[Int]]] {
-  override def reduce(value1: Tuple1[Array[Int]], value2: Tuple1[Array[Int]]): Tuple1[Array[Int]] = {
-    Tuple1(value1._1.zip(value2._1).map { case (x, y) => x + y })
-  }
-}
-
-class Count extends AggregateFunction[(Long, String), Array[Int], Array[Int]] {
-  override def createAccumulator(): Array[Int] = new Array[Int](24)
-
-  override def add(value: (Long, String), accumulator: Array[Int]): Array[Int] = {
-    val date = new DateTime(value._1, DateTimeZone.UTC)
-    val hour = date.getHourOfDay
-    accumulator(hour) += 1
-    accumulator
-  }
-
-  override def getResult(accumulator: Array[Int]): Array[Int] = accumulator
-
-  override def merge(a: Array[Int], b: Array[Int]): Array[Int] = {
-    a.zip(b).map { case (x, y) => x + y }
   }
 }
