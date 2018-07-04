@@ -36,17 +36,13 @@ object RedisManager {
     */
   def writeAsyncInSortedSet(records: ConsumerRecords[Long, Array[Byte]], topic: String) : Unit = {
 
-    var values: ListBuffer[GenericRecord] = ListBuffer()
-    records.asScala.foreach(record => {
-      val r: GenericRecord =
-        KafkaAvroParser.fromByteArrayToResultRecord(record.value, topic)
-      values += r
-    })
-
     try {
       this.redisClientPool.withClient {
         client => {
-          values.foreach( r => {
+          records.asScala.foreach( record => {
+            val r: GenericRecord =
+              KafkaAvroParser.fromByteArrayToResultRecord(record.value, topic)
+
             client.zadd(r.getSchema.getName, System.currentTimeMillis(), r.toString)
           }
           )}

@@ -11,11 +11,14 @@ import org.apache.storm.tuple.{Fields, Tuple, Values}
 import storm.utils.Window
 import java.util.Calendar
 import java.util.GregorianCalendar
+import scala.collection.JavaConverters._
+
+import scala.collection.mutable
 
 class WindowCountBolt {// extends BaseRichBolt {
 /*
   @transient
-  private lazy val windowConfiguration: util.HashMap[String, Duration] = new util.HashMap[String, Duration]()
+  private lazy val windowConfiguration: mutable.Map[String, Duration] = new mutable.HashMap[String, Duration]()
   private var _collector: OutputCollector = _
 
   private var latestCompletedTimeframe: Long = 0
@@ -35,7 +38,7 @@ class WindowCountBolt {// extends BaseRichBolt {
   }
 
   def handleMetronomeMessage(tuple: Tuple): Unit = {
-    val ts: Long = tuple.getLongByField("ts")
+    val ts: Long = tuple.getStringByField("ts").toLong
 
     val latestTimeFrame: Long = roundToCompletedMinute(ts)
 
@@ -43,7 +46,7 @@ class WindowCountBolt {// extends BaseRichBolt {
       val elapsedMinutes: Int = Math.ceil((latestTimeFrame - latestCompletedTimeframe) / MIN_IN_MS).toInt
       val expired = new util.ArrayList[String]()
 
-      for (postID: String <- windowPerPost.keySet()) {
+      for (postID: String <- windowPerPost.keySet().asScala) {
         val w: Window = windowPerPost.get(postID)
         if (w != null) {
 
@@ -55,7 +58,7 @@ class WindowCountBolt {// extends BaseRichBolt {
           }
 
           val values: Values = new Values()
-          values.add(ts)
+          values.add(ts.toString)
           values.add(postID)
           values.add(count)
           values.add(latestTimeFrame.toString)
@@ -65,7 +68,9 @@ class WindowCountBolt {// extends BaseRichBolt {
         }
 
         // Free memory
-        for (elem <- expired) {
+        val iterator = expired.iterator()
+        while (iterator.hasNext) {
+          val elem = iterator.next()
           windowPerPost.remove(elem)
         }
 
@@ -77,7 +82,7 @@ class WindowCountBolt {// extends BaseRichBolt {
   }
 
   def handlePostTuple(tuple: Tuple): Unit = {
-    val ts: Long = tuple.getLongByField("ts")
+    val ts: Long = tuple.getStringByField("ts").toLong
     val id: String = tuple.getStringByField("post_commented")
 
     val latestTimeFrame: Long = roundToCompletedMinute(ts)
@@ -86,7 +91,7 @@ class WindowCountBolt {// extends BaseRichBolt {
       val elapsedMinutes: Int = Math.ceil((latestTimeFrame - latestCompletedTimeframe) / MIN_IN_MS).toInt
       val expired = new util.ArrayList[String]()
 
-      for (postID: String <- windowPerPost.keySet()) {
+      for (postID: String <- windowPerPost.keySet().asScala) {
         val w: Window = windowPerPost.get(postID)
         if (w != null && postID != id) {
 
@@ -98,7 +103,7 @@ class WindowCountBolt {// extends BaseRichBolt {
           }
 
           val values: Values = new Values()
-          values.add(ts)
+          values.add(ts.toString)
           values.add(postID)
           values.add(count)
           values.add(latestTimeFrame.toString)
@@ -108,7 +113,9 @@ class WindowCountBolt {// extends BaseRichBolt {
         }
 
         // Free memory
-        for (elem <- expired) {
+        val iterator = expired.iterator()
+        while (iterator.hasNext) {
+          val elem = iterator.next()
           windowPerPost.remove(elem)
         }
 
@@ -116,7 +123,7 @@ class WindowCountBolt {// extends BaseRichBolt {
       }
     }
 
-    val windowDuration: Duration = windowConfiguration.get(Config.TOPOLOGY_BOLTS_SLIDING_INTERVAL_DURATION_MS)
+    val windowDuration: Duration = windowConfiguration(Config.TOPOLOGY_BOLTS_SLIDING_INTERVAL_DURATION_MS)
     var w: Window = windowPerPost.get(id)
     if (w == null) {
       w = new Window(windowDuration.value / (1000 * 60))
@@ -128,7 +135,7 @@ class WindowCountBolt {// extends BaseRichBolt {
     val count: String = w.estimateTotal().toString
 
     val values: Values = new Values()
-    values.add(ts)
+    values.add(ts.toString)
     values.add(id)
     values.add(count)
     values.add(latestCompletedTimeframe.toString)

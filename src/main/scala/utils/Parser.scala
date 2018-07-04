@@ -14,7 +14,7 @@ object Parser {
     cols(2).toLong
   }
 
-  def userIDFromPost(line: String) : Long = {
+  def userIDFromPost(line: String): Long = {
     val cols = split(line)
     cols(2).toLong
   }
@@ -26,11 +26,7 @@ object Parser {
 
   def extractTimeStamp(line: String): Long = {
     val cols = split(line)
-    val timestamp = convertToDateTime(cols(0)).getMillis
-    if(timestamp < 0){
-      println("Negative timestamp")
-    }
-    timestamp
+    convertToDateTime(cols(0)).getMillis
   }
 
 
@@ -42,51 +38,51 @@ object Parser {
   private lazy val dateFormatter = DateTimeFormat.forPattern(TIMESTAMP_FORMAT)
 
 
-  def readFriendships(path: String) : ListBuffer[UserConnection] = {
+  def readFriendships(path: String): ListBuffer[UserConnection] = {
 
-    var connections : ListBuffer[UserConnection] = ListBuffer()
-    for(l <- Source.fromFile(path).getLines()){
+    var connections: ListBuffer[UserConnection] = ListBuffer()
+    for (l <- Source.fromFile(path).getLines()) {
       val parsed = parseUserConnection(l)
       connections += parsed.get
     }
     connections
   }
 
-  def readComments(path: String) : ListBuffer[Comment] = {
+  def readComments(path: String): ListBuffer[Comment] = {
 
-    var comments : ListBuffer[Comment] = ListBuffer()
-    for(l <- Source.fromFile(path).getLines()){
+    var comments: ListBuffer[Comment] = ListBuffer()
+    for (l <- Source.fromFile(path).getLines()) {
       val parsed = parseComment(l)
       comments += parsed.get
     }
     comments
   }
 
-  def readPosts(path: String) : ListBuffer[Post] = {
+  def readPosts(path: String): ListBuffer[Post] = {
 
-    var posts : ListBuffer[Post] = ListBuffer()
-    for(l <- Source.fromFile(path).getLines()){
+    var posts: ListBuffer[Post] = ListBuffer()
+    for (l <- Source.fromFile(path).getLines()) {
       val parsed = parsePost(l)
       posts += parsed.get
     }
     posts
   }
 
-  def readFile(path: String) : Unit = {
+  def readFile(path: String): Unit = {
 
-    for(l <- Source.fromFile(path).getLines()){
+    for (l <- Source.fromFile(path).getLines()) {
       val parsed = parseUserConnection(l)
       println(parsed.get.toString)
-      if(parsed.isEmpty){
+      if (parsed.isEmpty) {
         println(l)
       }
     }
   }
 
-  def fileLinesAsList(path: String) : ListBuffer[String] = {
+  def fileLinesAsList(path: String): ListBuffer[String] = {
 
-    var list : ListBuffer[String] = ListBuffer()
-    for(l <- Source.fromFile(path).getLines()){
+    var list: ListBuffer[String] = ListBuffer()
+    for (l <- Source.fromFile(path).getLines()) {
       list += l
     }
 
@@ -94,9 +90,11 @@ object Parser {
 
   }
 
-  def parsePost(line: String) : Option[Post] = {
+  def parsePost(line: String): Option[Post] = {
     val cols = split(line)
-    if(cols.length != 5){ return None }
+    if (cols.length != 5) {
+      return None
+    }
 
     try {
       val timestampString = cols(0)
@@ -107,20 +105,24 @@ object Parser {
 
 
       /* check integrity. Post CAN be EMPTY */
-      if( postID < 0 || userID < 0 || username.isEmpty ){ return None }
+      if (postID < 0 || userID < 0 || username.isEmpty) {
+        return None
+      }
 
       val user = new User(userID, username)
 
       Some(new Post(postID, user, content, convertToDateTime(timestampString)))
 
     } catch {
-      case ex : Exception =>  ex.printStackTrace(); None
+      case ex: Exception => ex.printStackTrace(); None
     }
   }
 
-  def parseUserConnection(line: String) : Option[UserConnection] = {
+  def parseUserConnection(line: String): Option[UserConnection] = {
     val cols = split(line)
-    if(cols.length != 3){ return None }
+    if (cols.length != 3) {
+      return None
+    }
 
     try {
       val timestampString = cols(0)
@@ -128,7 +130,7 @@ object Parser {
       val secondUserID = cols(2).toLong
 
       /* check integrity */
-      if(firstUserID < 0 ||  secondUserID < 0) {
+      if (firstUserID < 0 || secondUserID < 0) {
         return None
       }
 
@@ -138,18 +140,18 @@ object Parser {
       val timestamp = convertToDateTime(timestampString)
       Some(new UserConnection(timestamp, firstUser, secondUser))
     } catch {
-      case ex : Exception =>  ex.printStackTrace(); None
+      case ex: Exception => ex.printStackTrace(); None
     }
   }
 
-  def parseUserConnection(tuple: (String, String, String)) : Option[UserConnection] = {
+  def parseUserConnection(tuple: (String, String, String)): Option[UserConnection] = {
     try {
       val timestampString = tuple._1
       val firstUserID = tuple._2.toLong
       val secondUserID = tuple._3.toLong
 
       /* check integrity */
-      if(firstUserID < 0 ||  secondUserID < 0) {
+      if (firstUserID < 0 || secondUserID < 0) {
         return None
       }
 
@@ -159,21 +161,25 @@ object Parser {
       val timestamp = convertToDateTime(timestampString)
       Some(new UserConnection(timestamp, firstUser, secondUser))
     } catch {
-      case ex : Exception =>  ex.printStackTrace(); None
+      case ex: Exception => ex.printStackTrace(); None
     }
   }
 
-  def parseComment(line: String) : Option[Comment] = {
+  def parseComment(line: String): Option[Comment] = {
 
     var postComment = true
     val cols = split(line)
 
     /* not post comment nor comment of comment */
-    if(cols.length != 6 && cols.length != 7){ return None }
+    if (cols.length != 6 && cols.length != 7) {
+      return None
+    }
 
     /* split function returns 6 fields for comment of comment
     * and 7 for post comment */
-    if(cols.length == 6) { postComment = false }
+    if (cols.length == 6) {
+      postComment = false
+    }
 
     try {
       val timestampString = cols(0)
@@ -183,21 +189,23 @@ object Parser {
       val username = cols(4)
 
       var parentID = 0L
-      if(postComment) {
+      if (postComment) {
         parentID = cols(6).toLong
       } else {
         parentID = cols(5).toLong
       }
 
       /* check integrity */
-      if( commentID < 0 || userID < 0 || content.isEmpty || username.isEmpty || parentID < 0){ return None }
+      if (commentID < 0 || userID < 0 || content.isEmpty || username.isEmpty || parentID < 0) {
+        return None
+      }
 
       val user = new User(userID, username)
 
       Some(new Comment(commentID, user, content, convertToDateTime(timestampString), postComment, parentID))
 
     } catch {
-      case ex : Exception =>  ex.printStackTrace(); None
+      case ex: Exception => ex.printStackTrace(); None
     }
   }
 
@@ -209,24 +217,28 @@ object Parser {
       dateFormatter.parseDateTime(timeS).withZone(DateTimeZone.forID(DEFAULT_DATETIME_ZONE))
   }
 
+  def convertToDateTime(time: Long): DateTime = {
+    new DateTime(time).withZone(DateTimeZone.forID(DEFAULT_DATETIME_ZONE))
+  }
+
   def split(line: String): Array[String] = {
     line.split(PIPE_DELIMITER).map(_.trim)
   }
 
 
-  def getHour(ts: AnyRef) : Int = {
+  def getHour(ts: AnyRef): Int = {
     val date = Parser.convertToDateTime(ts.toString)
     date.getHourOfDay
   }
 
-  def getMinUserID(r: GenericRecord) : scala.Long =
+  def getMinUserID(r: GenericRecord): scala.Long =
     math.min(r.get("user_id1").toString.toLong, r.get("user_id2").toString.toLong)
 
-  def getMaxUserID(r: GenericRecord) : scala.Long =
+  def getMaxUserID(r: GenericRecord): scala.Long =
     math.max(r.get("user_id1").toString.toLong, r.get("user_id2").toString.toLong)
 
 
-  def composeUserIDs(r: GenericRecord) : String = {
+  def composeUserIDs(r: GenericRecord): String = {
     getMinUserID(r) + "-" + getMaxUserID(r)
   }
 
