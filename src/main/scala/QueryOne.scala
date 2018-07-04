@@ -1,15 +1,10 @@
 import java.util.Properties
 
-import org.apache.flink.api.common.functions.ReduceFunction
-import org.apache.flink.api.common.state.ListState
-import org.apache.flink.api.java.aggregation.AggregationFunction
-import org.apache.flink.runtime.state.{FunctionInitializationContext, FunctionSnapshotContext}
+import org.apache.flink.api.common.functions.{AggregateFunction, ReduceFunction}
 import org.apache.flink.streaming.api.TimeCharacteristic
-import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction
-import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.scala.extensions._
-import org.apache.flink.streaming.api.scala.function.ProcessWindowFunction
+import org.apache.flink.streaming.api.scala.function.ProcessAllWindowFunction
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer011
@@ -50,53 +45,136 @@ object QueryOne {
       .keyBy(conn => (conn._2, conn._3))
       .flatMap(new FilterFunction)
 
-    //    val dailyCount = filtered
-    //      .mapWith(tuple => {
-    //        (Parser.convertToDateTime(tuple._1).getHourOfDay, 1)
-    //      })
-    //      .keyBy(tuple => Tuple1(tuple._1))
-    //      .timeWindow(Time.hours(24), Time.minutes(60))
-    //      .reduce(new Count, new AddStart)
-    //      .map(tuple => {
-    //        val array = new Array[Int](24)
-    //        array(tuple._2) = tuple._3
-    //        (tuple._1, array)
-    //      })
-    //      .keyBy(tuple => tuple._1)
-    //      .reduce((v1, v2) => {
-    //        for (i <- v1._2.indices) {
-    //          v1._2(i) += v2._2(i)
-    //        }
-    ////        v1._2.zip(v2._2).map { case (x, y) => x + y }
-    //        (v1._1, v1._2)
-    //
-    //      })
-    //      .setParallelism(1)
-    //      .map(tuple => {
-    //        val startWindow = new DateTime(tuple._1, DateTimeZone.UTC)
-    //        println(startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), tuple._2.mkString(" "))
-    //      })
-
 
     val dailyCount = filtered
       .mapWith(tuple => Parser.convertToDateTime(tuple._1).getMillis)
       .assignAscendingTimestamps(ts => ts)
-      .timeWindowAll(Time.hours(24), Time.minutes(5))
+      .timeWindowAll(Time.hours(24), Time.minutes(1))
       .aggregate(new CountAggregation, new AddAllWindowStart)
       .mapWith(res => {
         val startWindow = new DateTime(res._1, DateTimeZone.UTC)
-        println(startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), res._2.mkString(" "))
+        println("daily ", startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), res._2.mkString(" "))
+      })
+
+
+    val week = filtered
+      .mapWith(tuple => Parser.convertToDateTime(tuple._1).getMillis)
+      .assignAscendingTimestamps(ts => ts)
+      .timeWindowAll(Time.days(7), Time.minutes(5))
+      .aggregate(new CountAggregation, new AddAllWindowStart)
+      .mapWith(res => {
+        val startWindow = new DateTime(res._1, DateTimeZone.UTC)
+        println("weekly  ", startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), res._2.mkString(" "))
       })
 
 
 
   }
 
+  def executeOnTumblingWindow(ds: DataStream[(String, String, String)]): Unit = {
+
+    /*
+      Remove duplicates for bidirectional friendships
+    */
+    val filtered = ds
+      .mapWith(str => {
+        // Put first the biggest user's id
+        if (str._2.toLong > str._3.toLong)
+          (str._1, str._2, str._3)
+        else
+          (str._1, str._3, str._2)
+      })
+      .keyBy(conn => (conn._2, conn._3))
+      // Apply filtering
+      .flatMap(new FilterFunction)
+
+
+    /*
+      Aggregate hourly count for day
+      This stage receives 24 tuple for day from the previous one
+    */
+    val dailyCnt = filtered
+      .map(tuple => Parser.convertToDateTime(tuple._1).getMillis)
+      .assignAscendingTimestamps(ts => ts)
+      .timeWindowAll(Time.hours(24))
+      .aggregate(new CountAggregation, new AddAllWindowStart)
+
+    // Output
+    dailyCnt.map(array => {
+      val startWindow = new DateTime(array._1, DateTimeZone.UTC)
+      println("daily - ", startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), array._2.mkString(" "))
+    })
+
+    /*
+      Aggregate hourly count for week
+     */
+    val weeklyCnts = dailyCnt
+      .mapWith(tuple => tuple._2)
+      .timeWindowAll(Time.days(7))
+      .reduce(
+        new ReduceFunction[Array[Int]] {
+          override def reduce(value1: Array[Int], value2: Array[Int]): Array[Int] = {
+            value1.zip(value2).map { case (x, y) => x + y }
+          }
+        },
+        new AddAllWindowStart
+      )
+
+    //Output
+    weeklyCnts.map(array => {
+      val startWindow = new DateTime(array._1, DateTimeZone.UTC)
+      println("weekly - " + startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), array._2.mkString(" "))
+    })
+
+    /*
+      Perform count from the start of the social network.
+      We are WORKING WITH STATE.
+     */
+    val totCnts = weeklyCnts
+      .timeWindowAll(Time.days(7))
+      .process(new CountProcessWithState())
+
+    totCnts.map(array => {
+      val startWindow = new DateTime(array._1, DateTimeZone.UTC)
+      println("global - " + startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), array._2.mkString(" "))
+    })
+
+  }
 
   def main(args: Array[String]): Unit = {
-    execute(stream)
-    //    stream.print()
+    executeOnTumblingWindow(stream)
     env.execute()
   }
 }
 
+
+class MyWindowFunction extends ProcessAllWindowFunction[Tuple1[Array[Int]], (Long, Array[Int]), TimeWindow] {
+  override def process(context: Context, elements: Iterable[Tuple1[Array[Int]]], out: Collector[(Long, Array[Int])]): Unit = {
+    for (elem <- elements) {
+      out.collect((context.window.getStart, elem._1))
+    }
+  }
+}
+
+class MyReduceFunction extends ReduceFunction[Tuple1[Array[Int]]] {
+  override def reduce(value1: Tuple1[Array[Int]], value2: Tuple1[Array[Int]]): Tuple1[Array[Int]] = {
+    Tuple1(value1._1.zip(value2._1).map { case (x, y) => x + y })
+  }
+}
+
+class Count extends AggregateFunction[(Long, String), Array[Int], Array[Int]] {
+  override def createAccumulator(): Array[Int] = new Array[Int](24)
+
+  override def add(value: (Long, String), accumulator: Array[Int]): Array[Int] = {
+    val date = new DateTime(value._1, DateTimeZone.UTC)
+    val hour = date.getHourOfDay
+    accumulator(hour) += 1
+    accumulator
+  }
+
+  override def getResult(accumulator: Array[Int]): Array[Int] = accumulator
+
+  override def merge(a: Array[Int], b: Array[Int]): Array[Int] = {
+    a.zip(b).map { case (x, y) => x + y }
+  }
+}
