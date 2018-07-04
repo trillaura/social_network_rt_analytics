@@ -22,7 +22,7 @@ object Configuration {
   val DATASET_POSTS: String = "dataset/posts.dat"
   val DATASET_COMMENTS: String = "dataset/comments.dat"
 
-  val TEST_DATASET_FRIENDSHIPS: String = "dataset/test_friendships.dat"
+  val TEST_DATASET_FRIENDSHIPS: String = "dataset/friendships.dat"
 
   val FRIENDS_INPUT_TOPIC: String = "friendships-stream-input"
   val FRIENDS_OUTPUT_TOPIC_H24: String = "friendships-h24-stream-output"
@@ -207,7 +207,7 @@ object Configuration {
     "  { \"name\":\"post_id_9\", \"type\":\"long\" }," +
     "  { \"name\":\"num_comments_9\", \"type\":\"long\" }," +
     "  { \"name\":\"post_id_10\", \"type\":\"long\" }," +
-    "  { \"name\":\"num_comments_10\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_10\", \"type\":\"long\" }" +
     "]}"
 
   val COMMENT_RESULT_SCHEMA_H24: String = "{" +
@@ -234,7 +234,7 @@ object Configuration {
     "  { \"name\":\"post_id_9\", \"type\":\"long\" }," +
     "  { \"name\":\"num_comments_9\", \"type\":\"long\" }," +
     "  { \"name\":\"post_id_10\", \"type\":\"long\" }," +
-    "  { \"name\":\"num_comments_10\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_10\", \"type\":\"long\" }" +
     "]}"
 
   val COMMENT_RESULT_SCHEMA_D7: String = "{" +
@@ -261,7 +261,7 @@ object Configuration {
     "  { \"name\":\"post_id_9\", \"type\":\"long\" }," +
     "  { \"name\":\"num_comments_9\", \"type\":\"long\" }," +
     "  { \"name\":\"post_id_10\", \"type\":\"long\" }," +
-    "  { \"name\":\"num_comments_10\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_10\", \"type\":\"long\" }" +
     "]}"
 
 }
