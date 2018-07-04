@@ -1,11 +1,19 @@
 import java.util.Properties
 
 import org.apache.flink.api.common.functions.ReduceFunction
+import org.apache.flink.api.common.state.ListState
+import org.apache.flink.api.java.aggregation.AggregationFunction
+import org.apache.flink.runtime.state.{FunctionInitializationContext, FunctionSnapshotContext}
 import org.apache.flink.streaming.api.TimeCharacteristic
+import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction
+import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.scala.extensions._
+import org.apache.flink.streaming.api.scala.function.ProcessWindowFunction
 import org.apache.flink.streaming.api.windowing.time.Time
+import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer011
+import org.apache.flink.util.Collector
 import org.joda.time.{DateTime, DateTimeZone}
 import utils._
 import utils.flink._
@@ -39,73 +47,48 @@ object QueryOne {
         else
           (str._1, str._3, str._2)
       })
-      // Assign event time
-      .assignAscendingTimestamps(tuple => Parser.convertToDateTime(tuple._1).getMillis)
       .keyBy(conn => (conn._2, conn._3))
-      // Apply filtering
       .flatMap(new FilterFunction)
 
-    /*
-      HOURLY COUNT
-     */
-    val hourlyCnt = filtered
-      .mapWith(tuple => {
-        (Parser.convertToDateTime(tuple._1).getHourOfDay, 1)
+    //    val dailyCount = filtered
+    //      .mapWith(tuple => {
+    //        (Parser.convertToDateTime(tuple._1).getHourOfDay, 1)
+    //      })
+    //      .keyBy(tuple => Tuple1(tuple._1))
+    //      .timeWindow(Time.hours(24), Time.minutes(60))
+    //      .reduce(new Count, new AddStart)
+    //      .map(tuple => {
+    //        val array = new Array[Int](24)
+    //        array(tuple._2) = tuple._3
+    //        (tuple._1, array)
+    //      })
+    //      .keyBy(tuple => tuple._1)
+    //      .reduce((v1, v2) => {
+    //        for (i <- v1._2.indices) {
+    //          v1._2(i) += v2._2(i)
+    //        }
+    ////        v1._2.zip(v2._2).map { case (x, y) => x + y }
+    //        (v1._1, v1._2)
+    //
+    //      })
+    //      .setParallelism(1)
+    //      .map(tuple => {
+    //        val startWindow = new DateTime(tuple._1, DateTimeZone.UTC)
+    //        println(startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), tuple._2.mkString(" "))
+    //      })
+
+
+    val dailyCount = filtered
+      .mapWith(tuple => Parser.convertToDateTime(tuple._1).getMillis)
+      .assignAscendingTimestamps(ts => ts)
+      .timeWindowAll(Time.hours(24), Time.minutes(5))
+      .aggregate(new CountAggregation, new AddAllWindowStart)
+      .mapWith(res => {
+        val startWindow = new DateTime(res._1, DateTimeZone.UTC)
+        println(startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), res._2.mkString(" "))
       })
-      .keyBy(0)
-      .timeWindow(Time.minutes(60))
-      .sum(1)
 
-    /*
-      Aggregate hourly count for day
-      This stage receives 24 tuple for day from the previous one
-    */
-    val dailyCnt = hourlyCnt
-      .timeWindowAll(Time.hours(24))
-      .aggregate(new CountAggregation, new AddWindowStart)
 
-    dailyCnt.map(array => {
-      val startWindow = new DateTime(array._1, DateTimeZone.UTC)
-      (startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), array._2.mkString(" "))
-    })
-      .print()
-
-    /*
-      Aggregate hourly count for week
-     */
-    val weeklyCnts = dailyCnt
-      .mapWith(tuple => tuple._2)
-      .timeWindowAll(Time.days(7))
-      .reduce(
-        new ReduceFunction[Array[Int]] {
-          override def reduce(value1: Array[Int], value2: Array[Int]): Array[Int] = {
-            value1.zip(value2).map { case (x, y) => x + y }
-
-          }
-        },
-        new AddWindowStart
-      )
-
-    /* output */
-    weeklyCnts.map(array => {
-      val startWindow = new DateTime(array._1, DateTimeZone.UTC)
-      (startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), array._2.mkString(" "))
-    })
-      .print()
-
-    /*
-      Perform count from the start of the social network.
-      We are WORKING WITH STATE.
-     */
-    val totCnts = weeklyCnts
-      .timeWindowAll(Time.days(30))
-      .process(new CountProcessWithState())
-
-    totCnts.map(array => {
-      val startWindow = new DateTime(array._1, DateTimeZone.UTC)
-      (startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), array._2.mkString(" "))
-    })
-      .print()
 
   }
 
@@ -116,3 +99,4 @@ object QueryOne {
     env.execute()
   }
 }
+
