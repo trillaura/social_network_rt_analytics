@@ -32,18 +32,18 @@ object Configuration {
   val POSTS_INPUT_TOPIC: String = "posts-stream-input"
   val POSTS_OUTPUT_TOPIC_H24: String = "posts-h24-stream-output"
   val POSTS_OUTPUT_TOPIC_7D: String = "posts-d7-stream-output"
-  val POSTS_OUTPUT_TOPIC_ALLTIME: String = "posts-alltime-stream-output"
+  val POSTS_OUTPUT_TOPIC_H1: String = "posts-h1-stream-output"
 
   val COMMENTS_INPUT_TOPIC: String = "comments-stream-input"
   val COMMENTS_OUTPUT_TOPIC_H24: String = "comments-h24-stream-output"
   val COMMENTS_OUTPUT_TOPIC_7D: String = "comments-d7-stream-output"
-  val COMMENTS_OUTPUT_TOPIC_ALLTIME: String = "comments-alltime-stream-output"
+  val COMMENTS_OUTPUT_TOPIC_H1: String = "comments-h1-stream-output"
 
   val INPUT_TOPICS : List[String] = List(FRIENDS_INPUT_TOPIC, COMMENTS_INPUT_TOPIC, POSTS_INPUT_TOPIC)
   val OUTPUT_TOPICS : List[String] = List(
     FRIENDS_OUTPUT_TOPIC_H24, FRIENDS_OUTPUT_TOPIC_D7, FRIENDS_OUTPUT_TOPIC_ALLTIME,
-    COMMENTS_OUTPUT_TOPIC_H24, COMMENTS_OUTPUT_TOPIC_7D, COMMENTS_OUTPUT_TOPIC_ALLTIME,
-    POSTS_OUTPUT_TOPIC_H24, POSTS_OUTPUT_TOPIC_7D, POSTS_OUTPUT_TOPIC_ALLTIME)
+    COMMENTS_OUTPUT_TOPIC_H24, COMMENTS_OUTPUT_TOPIC_7D, COMMENTS_OUTPUT_TOPIC_H1,
+    POSTS_OUTPUT_TOPIC_H24, POSTS_OUTPUT_TOPIC_7D, POSTS_OUTPUT_TOPIC_H1)
 
   val CONSUMER_GROUP_ID: String = "app-consumer1"
   val NUM_CONSUMERS: Int = 3
@@ -181,4 +181,87 @@ object Configuration {
     "  { \"name\":\"post\", \"type\":\"string\" }," +
     "  { \"name\":\"user\", \"type\":\"string\" }" +
     "]}"
+
+
+  val COMMENT_RESULT_SCHEMA_H1: String = "{" +
+    "\"type\":\"record\"," +
+    "\"name\":\"comments_statH1\"," +
+    "\"fields\":[" +
+    "  { \"name\":\"ts\", \"type\": \"long\" }," +
+    "  { \"name\":\"post_id_1\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_1\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_2\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_2\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_3\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_3\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_4\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_4\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_5\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_5\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_6\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_6\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_7\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_7\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_8\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_8\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_9\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_9\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_10\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_10\", \"type\":\"long\" }," +
+    "]}"
+
+  val COMMENT_RESULT_SCHEMA_H24: String = "{" +
+    "\"type\":\"record\"," +
+    "\"name\":\"comments_statH24\"," +
+    "\"fields\":[" +
+    "  { \"name\":\"ts\", \"type\": \"long\" }," +
+    "  { \"name\":\"post_id_1\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_1\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_2\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_2\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_3\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_3\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_4\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_4\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_5\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_5\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_6\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_6\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_7\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_7\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_8\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_8\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_9\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_9\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_10\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_10\", \"type\":\"long\" }," +
+    "]}"
+
+  val COMMENT_RESULT_SCHEMA_D7: String = "{" +
+    "\"type\":\"record\"," +
+    "\"name\":\"comments_statD7\"," +
+    "\"fields\":[" +
+    "  { \"name\":\"ts\", \"type\": \"long\" }," +
+    "  { \"name\":\"post_id_1\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_1\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_2\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_2\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_3\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_3\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_4\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_4\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_5\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_5\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_6\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_6\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_7\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_7\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_8\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_8\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_9\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_9\", \"type\":\"long\" }," +
+    "  { \"name\":\"post_id_10\", \"type\":\"long\" }," +
+    "  { \"name\":\"num_comments_10\", \"type\":\"long\" }," +
+    "]}"
+
 }

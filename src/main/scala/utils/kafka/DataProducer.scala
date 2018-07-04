@@ -6,7 +6,7 @@ import org.apache.avro.Schema
 import org.apache.avro.data.TimeConversions
 import org.apache.avro.generic.GenericData
 import org.apache.kafka.clients.producer._
-import org.apache.kafka.common.serialization.{ByteArraySerializer, StringSerializer}
+import org.apache.kafka.common.serialization.{ByteArraySerializer, LongSerializer}
 import utils.{Configuration, Parser}
 
 
@@ -16,32 +16,32 @@ class DataProducer(t: String, f: Int) extends Runnable {
 
   val producer_id: String = Configuration.PRODUCER_ID
   val topic: String = t
-  var producer: Producer[String, Array[Byte]] = createProducer()
+  var producer: Producer[Long, Array[Byte]] = createProducer()
 
   val frequency: Int = f
 
   val parser: Schema.Parser = new Schema.Parser()
 
-  def createProducer(): Producer[String, Array[Byte]] = {
+  def createProducer(): Producer[Long, Array[Byte]] = {
 
     val props: Properties  = new Properties()
     props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, Configuration.BOOTSTRAP_SERVERS)
     props.put(ProducerConfig.CLIENT_ID_CONFIG, Configuration.PRODUCER_ID)
-    props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, new StringSerializer().getClass.getName)
+    props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, new LongSerializer().getClass.getName)
     props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, new ByteArraySerializer().getClass.getName)
 
-    new KafkaProducer[String, Array[Byte]](props)
+    new KafkaProducer[Long, Array[Byte]](props)
   }
 
-  def produce(data: Array[Byte], topic: String) : Unit = {
+  def produce(data: Array[Byte], topic: String, timestamp: Long) : Unit = {
 
-    val record: ProducerRecord[String, Array[Byte]] = new ProducerRecord(topic, data)
+    val record: ProducerRecord[Long, Array[Byte]] = new ProducerRecord(topic, timestamp, data)
 
     val metadata: RecordMetadata = producer.send(record).get()
 
     // DEBUG
-    printf("sent avro record(key=%s value=%s), meta(partition=%d, offset=%d)\n",
-      record.key(), record.value(), metadata.partition(), metadata.offset())
+    printf("sent to %s avro record(key=%s value=%s), meta(partition=%d, offset=%d)\n",
+      topic, record.key(), record.value(), metadata.partition(), metadata.offset())
   }
 
   def close(): Unit = {
@@ -58,7 +58,7 @@ class DataProducer(t: String, f: Int) extends Runnable {
 
   def produceFriendships(frequency: Int) : Unit = {
 
-    val friendships = Parser.readFriendships(Configuration.DATASET_FRIENDSHIPS)
+    val friendships = Parser.readFriendships(Configuration.TEST_DATASET_FRIENDSHIPS)
 
     var before: Long = 0l
     var period: Long = 0l
@@ -75,7 +75,7 @@ class DataProducer(t: String, f: Int) extends Runnable {
       Thread.sleep(period)
 
       before = now
-      produce(bytes, topic)
+      produce(bytes, topic, now)
 
     }
     close()
@@ -101,7 +101,7 @@ class DataProducer(t: String, f: Int) extends Runnable {
 
       before = now
 
-      produce(bytes, topic)
+      produce(bytes, topic, now)
 
     }
     close()
@@ -127,7 +127,7 @@ class DataProducer(t: String, f: Int) extends Runnable {
 
       before = now
 
-      produce(bytes, topic)
+      produce(bytes, topic, now)
 
     }
     close()
@@ -138,5 +138,6 @@ class DataProducer(t: String, f: Int) extends Runnable {
     if (topic.equals(Configuration.FRIENDS_INPUT_TOPIC)) { produceFriendships(frequency) }
     else if (topic.equals(Configuration.COMMENTS_INPUT_TOPIC)) { produceComments(frequency) }
     else if (topic.equals(Configuration.POSTS_INPUT_TOPIC)) { producePosts(frequency) }
+    else if (topic.equals("test")) { produceFriendships(frequency) } // to remove
   }
 }
