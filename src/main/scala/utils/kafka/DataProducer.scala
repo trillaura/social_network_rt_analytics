@@ -33,15 +33,15 @@ class DataProducer(t: String, f: Int) extends Runnable {
     new KafkaProducer[String, Array[Byte]](props)
   }
 
-  def produce(data: Array[Byte], topic: String) : Unit = {
+  def produce(data: Array[Byte], topic: String, timestamp: Long) : Unit = {
 
-    val record: ProducerRecord[String, Array[Byte]] = new ProducerRecord(topic, data)
+    val record: ProducerRecord[String, Array[Byte]] = new ProducerRecord(topic, timestamp.toString, data)
 
     val metadata: RecordMetadata = producer.send(record).get()
 
     // DEBUG
-    printf("sent avro record(key=%s value=%s), meta(partition=%d, offset=%d)\n",
-      record.key(), record.value(), metadata.partition(), metadata.offset())
+    printf("sent to %s avro record(key=%s value=%s), meta(partition=%d, offset=%d)\n",
+      topic, record.key(), record.value(), metadata.partition(), metadata.offset())
   }
 
   def close(): Unit = {
@@ -58,7 +58,7 @@ class DataProducer(t: String, f: Int) extends Runnable {
 
   def produceFriendships(frequency: Int) : Unit = {
 
-    val friendships = Parser.readFriendships(Configuration.DATASET_FRIENDSHIPS)
+    val friendships = Parser.readFriendships(Configuration.TEST_DATASET_FRIENDSHIPS)
 
     var before: Long = 0l
     var period: Long = 0l
@@ -75,7 +75,7 @@ class DataProducer(t: String, f: Int) extends Runnable {
       Thread.sleep(period)
 
       before = now
-      produce(bytes, topic)
+      produce(bytes, topic, now)
 
     }
     close()
@@ -101,7 +101,7 @@ class DataProducer(t: String, f: Int) extends Runnable {
 
       before = now
 
-      produce(bytes, topic)
+      produce(bytes, topic, now)
 
     }
     close()
@@ -127,7 +127,7 @@ class DataProducer(t: String, f: Int) extends Runnable {
 
       before = now
 
-      produce(bytes, topic)
+      produce(bytes, topic, now)
 
     }
     close()
@@ -138,5 +138,6 @@ class DataProducer(t: String, f: Int) extends Runnable {
     if (topic.equals(Configuration.FRIENDS_INPUT_TOPIC)) { produceFriendships(frequency) }
     else if (topic.equals(Configuration.COMMENTS_INPUT_TOPIC)) { produceComments(frequency) }
     else if (topic.equals(Configuration.POSTS_INPUT_TOPIC)) { producePosts(frequency) }
+    else if (topic.equals("test")) { produceFriendships(frequency) } // to remove
   }
 }

@@ -52,9 +52,15 @@ object KafkaAvroParser {
     recordInjection.invert(record).get
   }
 
-  def fromByteArrayToFriendshipRecord(record: Array[Byte]) : GenericRecord = {
+  def fromByteArrayToFriendshipRecord(record: Array[Byte]) : GenericRecord =
     recordInjectionFriendship.invert(record).get
-  }
+
+  def fromByteArrayToCommentRecord(record: Array[Byte]) : GenericRecord =
+    recordInjectionComment.invert(record).get
+
+  def fromByteArrayToPostRecord(record: Array[Byte]) : GenericRecord =
+    recordInjectionPost.invert(record).get
+
 
   def fromFriendshipRecordToByteArray(ts: DateTime, user1: Long, user2: Long) : Array[Byte] = {
 
