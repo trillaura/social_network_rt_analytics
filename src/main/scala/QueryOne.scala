@@ -1,14 +1,11 @@
 import java.util.Properties
 
-import org.apache.flink.api.common.functions.{AggregateFunction, ReduceFunction}
+import org.apache.flink.api.common.functions.ReduceFunction
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.scala.extensions._
-import org.apache.flink.streaming.api.scala.function.ProcessAllWindowFunction
 import org.apache.flink.streaming.api.windowing.time.Time
-import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer011
-import org.apache.flink.util.Collector
 import org.joda.time.{DateTime, DateTimeZone}
 import utils._
 import utils.flink._
