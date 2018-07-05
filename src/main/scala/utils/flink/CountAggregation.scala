@@ -27,3 +27,32 @@ class CountAggregation extends AggregateFunction[Long, Array[Int], Array[Int]] {
   }
 
 }
+
+class CountDaily extends AggregateFunction[(Long, String), Array[Int], Array[Int]] {
+  override def createAccumulator(): Array[Int] = new Array[Int](24)
+
+  override def add(value: (Long, String), accumulator: Array[Int]): Array[Int] = {
+    val hour = Parser.convertToDateTime(value._1).hourOfDay().get()
+    accumulator(hour) += 1
+    accumulator
+  }
+
+  override def getResult(accumulator: Array[Int]): Array[Int] = accumulator
+
+  override def merge(a: Array[Int], b: Array[Int]): Array[Int] = a.zip(b).map { case (x, y) => x + y }
+
+}
+
+
+class CountWeekly extends AggregateFunction[(String, Long, Array[Int]), Array[Int], Array[Int]] {
+  override def createAccumulator(): Array[Int] = new Array[Int](24)
+
+  override def add(value: (String, Long, Array[Int]), accumulator: Array[Int]): Array[Int] = {
+    accumulator.zip(value._3).map { case (x, y) => x + y }
+  }
+
+  override def getResult(accumulator: Array[Int]): Array[Int] = accumulator
+
+  override def merge(a: Array[Int], b: Array[Int]): Array[Int] = a.zip(b).map { case (x, y) => x + y }
+
+}

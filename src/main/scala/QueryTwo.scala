@@ -44,7 +44,6 @@ object QueryTwo {
   env.setParallelism(4)
 
   val data: DataStream[String] = env.readTextFile("dataset/comments.dat")
-  env
 
   def executeWindowAll() : Unit = {
     val results = data
