@@ -11,7 +11,7 @@ import utils.ranking.{RankElement, RankingBoard, RankingResult}
 
 class PartialRank extends BaseRichBolt {
 
-  var gson: Gson = new Gson()
+  var gson: Gson = _
   var _collector: OutputCollector = _
 
   val rankingBoard = new RankingBoard[String]()
@@ -20,7 +20,10 @@ class PartialRank extends BaseRichBolt {
     declarer.declare(new Fields("partialRanking"))
   }
 
-  override def prepare(stormConf: util.Map[_, _], context: TopologyContext, collector: OutputCollector): Unit = _collector = collector
+  override def prepare(stormConf: util.Map[_, _], context: TopologyContext, collector: OutputCollector): Unit = {
+    _collector = collector
+    gson = new Gson()
+  }
 
   override def execute(input: Tuple): Unit = {
     val timestamp: String = input.getStringByField("start")

@@ -1,4 +1,5 @@
 import org.joda.time.DateTime
+import utils.ranking.GenericRankElement
 
 import scala.collection.mutable.ListBuffer
 

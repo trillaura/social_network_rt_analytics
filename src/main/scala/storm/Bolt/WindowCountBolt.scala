@@ -36,7 +36,7 @@ class WindowCountBolt extends BaseRichBolt {
 
   def withSlidingWindow(size: BaseWindowedBolt.Duration, slide: BaseWindowedBolt.Duration) = {
     if (size.value <= 0) throw new IllegalArgumentException("Window slide must be positive [" + size + "]")
-    if (slide.value < size.value) throw new IllegalArgumentException("Window slide must be less than [" + size + "]")
+    if (size.value < slide.value) throw new IllegalArgumentException("Window slide must be less than [" + size + "]")
 
     windowConfiguration.put(Config.TOPOLOGY_BOLTS_SLIDING_INTERVAL_DURATION_MS, slide)
     windowConfiguration.put(Config.TOPOLOGY_BOLTS_WINDOW_SIZE_MS, size)
@@ -88,7 +88,7 @@ class WindowCountBolt extends BaseRichBolt {
           values.add(ts.toString)
           values.add(postID)
           values.add(count)
-          values.add(windowStart)
+          values.add(windowStart.toString)
 
 
           _collector.emit(values)
@@ -137,7 +137,7 @@ class WindowCountBolt extends BaseRichBolt {
             values.add(ts.toString)
             values.add(postID)
             values.add(count)
-            values.add(windowStart)
+            values.add(windowStart.toString)
 
             _collector.emit(values)
           }

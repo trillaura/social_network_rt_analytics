@@ -14,6 +14,10 @@ object Topology {
 
   def main(args: Array[String]): Unit = {
 
+    val config = new Config
+    config.setNumWorkers(4)
+    config.setMessageTimeoutSecs(5)
+
     val builder: TopologyBuilder = new TopologyBuilder
 
     builder.setSpout("spout", new SimpleSpout)
@@ -41,7 +45,7 @@ object Topology {
 
     builder.setBolt("globalRank", new GlobalRank)
         .setNumTasks(1)
-        .allGrouping("partialRank")
+        .shuffleGrouping("partialRank")
     /*
       Collect the output
      */
@@ -57,28 +61,11 @@ object Topology {
       Create topology and submit it
      */
 
-    val stormTopology: StormTopology = builder.createTopology()
-    /* Create configurations */
-    val conf = new Config
-    conf.setDebug(false)
-    /* number of workers to create for current topology */
-    conf.setNumWorkers(3)
+    val cluster = new LocalCluster
+    cluster.submitTopology("query2", config, builder.createTopology)
+    Thread.sleep(3600 * 1000)
+    cluster.killTopology("query2")
 
-    /* Update numWorkers using command-line received parameters */
-    if (args.length == 2)
-      if (args(1) != null) {
-        val numWorkers = args(1).toInt
-        conf.setNumWorkers(numWorkers)
-        System.out.println("Number of workers to generate for current topology set to: " + numWorkers)
-      }
-
-
-    // local
-    val cluster = new LocalCluster()
-    cluster.submitTopology("debs", conf, stormTopology)
-    Utils.sleep(100000)
-    cluster.killTopology("debs")
-    cluster.shutdown()
 
     // cluster
     //        StormSubmitter.submitTopology(args(0), conf, stormTopology)

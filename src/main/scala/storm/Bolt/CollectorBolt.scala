@@ -17,7 +17,7 @@ class CollectorBolt extends BaseRichBolt {
   var _collector: OutputCollector = _
 
   var producer: Producer[Long, Array[Byte]] = _
-  var gson: Gson = new Gson()
+  var gson: Gson = _
 
   override def execute(input: Tuple): Unit = {
 
@@ -74,6 +74,7 @@ class CollectorBolt extends BaseRichBolt {
 
   override def prepare(stormConf: util.Map[_, _], context: TopologyContext, collector: OutputCollector): Unit = {
     _collector = collector
+    gson = new Gson()
     producer = ProducerManager.getDefaultProducer
   }
 
