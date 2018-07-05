@@ -30,13 +30,13 @@ class WindowCountBolt extends BaseRichBolt {
   private var _collector: OutputCollector = _
 
 
-  private def withTumblingWindow(duration: BaseWindowedBolt.Duration) = {
+  def withTumblingWindow(duration: BaseWindowedBolt.Duration) = {
     withSlidingWindow(duration, duration)
   }
 
-  private def withSlidingWindow(size: BaseWindowedBolt.Duration, slide: BaseWindowedBolt.Duration) = {
+  def withSlidingWindow(size: BaseWindowedBolt.Duration, slide: BaseWindowedBolt.Duration) = {
     if (size.value <= 0) throw new IllegalArgumentException("Window slide must be positive [" + size + "]")
-    if (slide.value < size.value) throw new IllegalArgumentException("Window slide must be less than [" + size + "]")
+    if (size.value < slide.value) throw new IllegalArgumentException("Window slide must be less than [" + size + "]")
 
     windowConfiguration.put(Config.TOPOLOGY_BOLTS_SLIDING_INTERVAL_DURATION_MS, slide)
     windowConfiguration.put(Config.TOPOLOGY_BOLTS_WINDOW_SIZE_MS, size)
@@ -88,8 +88,7 @@ class WindowCountBolt extends BaseRichBolt {
           values.add(ts.toString)
           values.add(postID)
           values.add(count)
-          // TODO remove comment
-          //values.add(windowSlide)
+          values.add(windowStart.toString)
 
 
           _collector.emit(values)
@@ -138,8 +137,7 @@ class WindowCountBolt extends BaseRichBolt {
             values.add(ts.toString)
             values.add(postID)
             values.add(count)
-            // TODO remove comment
-            //values.add(windowSlide)
+            values.add(windowStart.toString)
 
             _collector.emit(values)
           }
@@ -185,7 +183,7 @@ class WindowCountBolt extends BaseRichBolt {
   }
 
   override def declareOutputFields(declarer: OutputFieldsDeclarer): Unit = {
-    declarer.declare(new Fields("ts", "postID", "count", "start"))
+    declarer.declare(new Fields("ts", "post_commented", "count", "start"))
   }
 
   def isValid(timestamp: Long): Boolean = {
