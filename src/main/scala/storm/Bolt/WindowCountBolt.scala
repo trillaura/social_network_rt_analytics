@@ -1,19 +1,15 @@
 package storm.Bolt
 
-import java.beans.Transient
 import java.util
-import java.util.Date
+import java.util.{Calendar, Date, GregorianCalendar}
 
 import org.apache.storm.task.{OutputCollector, TopologyContext}
 import org.apache.storm.topology.OutputFieldsDeclarer
-import org.apache.storm.topology.base.BaseWindowedBolt.Duration
-import org.apache.storm.topology.base.{BaseRichBolt, BaseWindowedBolt}
+import org.apache.storm.topology.base.BaseRichBolt
 import org.apache.storm.tuple.{Fields, Tuple, Values}
-import storm.utils.Window
-import java.util.Calendar
-import java.util.GregorianCalendar
-
 import org.joda.time.{DateTime, DateTimeZone}
+import storm.utils.Window
+import utils.Parser
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -64,7 +60,8 @@ class WindowCountBolt extends BaseRichBolt {
   }
 
   def handleMetronomeMessage(tuple: Tuple): Unit = {
-    val ts: Long = tuple.getStringByField("ts").toLong
+    val timestamp: String = tuple.getStringByField("ts")
+    val ts: Long = Parser.convertToDateTime(timestamp).getMillis
 
     val windowSlide: Long = windowConfiguration(Config.TOPOLOGY_BOLTS_SLIDING_INTERVAL_DURATION_MS) // slide interval in ms
     val currentTime: Long = roundToCompletedMinute(ts)
@@ -79,25 +76,23 @@ class WindowCountBolt extends BaseRichBolt {
 
       for (postID: String <- windowPerPost.keySet().asScala) {
         val w: Window = windowPerPost.get(postID)
-        if (w != null) {
+        w.moveForward(frameToSlide)
 
-          w.moveForward(frameToSlide)
-
-          val count: String = w.estimateTotal().toString
-          if (w.estimateTotal() == 0) {
-            expired.add(postID)
-          }
-
-          val values: Values = new Values()
-          values.add(ts.toString)
-          values.add(postID)
-          values.add(count)
-          values.add(windowStart.toString)
-
-
-          _collector.emit(values)
+        val count: String = w.estimateTotal().toString
+        if (w.estimateTotal() == 0) {
+          expired.add(postID)
         }
+
+        val values: Values = new Values()
+        values.add(ts.toString)
+        values.add(postID)
+        values.add(count)
+        values.add(windowStart.toString)
+
+
+        _collector.emit(values)
       }
+
       // Free memory
       val iterator = expired.iterator()
       while (iterator.hasNext) {
@@ -110,7 +105,8 @@ class WindowCountBolt extends BaseRichBolt {
   }
 
   def handlePostTuple(tuple: Tuple): Unit = {
-    val ts: Long = tuple.getStringByField("ts").toLong
+    val timestamp: String = tuple.getStringByField("ts")
+    val ts: Long = Parser.convertToDateTime(timestamp).getMillis
     val id: String = tuple.getStringByField("post_commented")
     val count: Int = tuple.getStringByField("count").toInt
 
@@ -127,24 +123,21 @@ class WindowCountBolt extends BaseRichBolt {
 
       for (postID: String <- windowPerPost.keySet().asScala) {
         val w: Window = windowPerPost.get(postID)
-        if (w != null) {
 
-          w.moveForward(frameToSlide)
+        w.moveForward(frameToSlide)
 
-          if (postID != id) {
-            val count: String = w.estimateTotal().toString
-            if (w.estimateTotal() == 0) {
-              expired.add(postID)
-            }
-            val values: Values = new Values()
-            values.add(ts.toString)
-            values.add(postID)
-            values.add(count)
-            values.add(windowStart.toString)
-
-            _collector.emit(values)
+        if (postID != id) {
+          val count: String = w.estimateTotal().toString
+          if (w.estimateTotal() == 0) {
+            expired.add(postID)
           }
+          val values: Values = new Values()
+          values.add(ts.toString)
+          values.add(postID)
+          values.add(count)
+          values.add(windowStart.toString)
 
+          _collector.emit(values)
         }
       }
 
@@ -156,7 +149,6 @@ class WindowCountBolt extends BaseRichBolt {
       }
 
     }
-
 
     var w: Window = windowPerPost.get(id)
     if (w == null) {
@@ -173,14 +165,15 @@ class WindowCountBolt extends BaseRichBolt {
       w.increment()
     }
 
-    val value = w.computeTotal
-    val values: Values = new Values()
-    values.add(ts.toString)
-    values.add(id)
-    values.add(value.toString)
-    values.add(windowStart.toString)
+//    val value = w.computeTotal
+    //    val values: Values = new Values()
+    //    values.add(ts.toString)
+    //    values.add(id)
+    //    values.add(value.toString)
+    //    values.add(windowStart.toString)
+    //
+    //    _collector.emit(values)
 
-    _collector.emit(values)
     _collector.ack(tuple)
   }
 

@@ -10,7 +10,7 @@ class Window(size: Int) {
 
 
   def moveForward(): Int = {
-    val value = timeFrames(headSlot)
+    val value = timeFrames(tailSlot)
     timeFrames(tailSlot) = 0
     advanceHead()
     count -= value

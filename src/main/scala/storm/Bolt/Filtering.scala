@@ -29,10 +29,10 @@ class Filtering extends BaseRichBolt {
       return
     }
     val dateTime = input.getStringByField("ts")
-    val timestamp: Long = Parser.convertToDateTime(dateTime).getMillis
+//    val timestamp: Long = Parser.convertToDateTime(dateTime).getMillis
 
     val values = new Values()
-    values.add(timestamp.toString)
+    values.add(dateTime)
     values.add(postID)
     values.add("1")
 

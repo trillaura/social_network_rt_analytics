@@ -8,6 +8,8 @@ import org.apache.storm.topology.base.BaseRichBolt
 import org.apache.storm.tuple.{Fields, Tuple, Values}
 import java.util.{Calendar, Date, GregorianCalendar}
 
+import utils.Parser
+
 class Metronome extends BaseRichBolt {
   private var _collector: OutputCollector = _
   private var currentTime: Long = 0
@@ -26,7 +28,8 @@ class Metronome extends BaseRichBolt {
     val ts: String = input.getStringByField("ts")
     val postID: String = input.getStringByField("post_commented")
 
-    val time: Long = roundToCompletedMinute(ts.toLong)
+    val timestamp: Long = Parser.convertToDateTime(ts).getMillis
+    val time: Long = roundToCompletedMinute(timestamp)
 
     // Time must go forward
     if (currentTime < time) {
