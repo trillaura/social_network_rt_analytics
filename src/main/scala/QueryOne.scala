@@ -166,57 +166,6 @@ object QueryOne {
 
   }
 
-  def executeWithSlidingWindow(ds: DataStream[(String, String, String)]): Unit = {
-
-    /*
-      Remove duplicates for bidirectional friendships
-    */
-    val filtered = ds
-      .mapWith(str => {
-        // Put first the biggest user's id
-        if (str._2.toLong > str._3.toLong)
-          (str._1, str._2, str._3)
-        else
-          (str._1, str._3, str._2)
-      })
-      .keyBy(conn => (conn._2, conn._3))
-      .flatMap(new FilterFunction)
-
-
-    val dailyCount = filtered
-      .mapWith(tuple => new DateTime(tuple._1).getMillis)
-      .assignAscendingTimestamps(ts => ts)
-      .timeWindowAll(Time.hours(24), Time.minutes(5))
-      .aggregate(new CountAggregation, new AddAllWindowStart)
-      .mapWith(res => {
-        val startWindow = new DateTime(res._1)
-        println("daily - " + res._1, res._2.mkString(" "))
-      })
-
-
-    val week = filtered
-      .mapWith(tuple => Parser.convertToDateTime(tuple._1).getMillis)
-      .assignAscendingTimestamps(ts => ts)
-      .timeWindowAll(Time.days(7), Time.hours(1))
-      .aggregate(new CountAggregation, new AddAllWindowStart)
-      .mapWith(res => {
-        val startWindow = new DateTime(res._1, DateTimeZone.UTC)
-        println("weekly  " + startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), res._2.mkString(" "))
-      })
-
-
-    val global = filtered
-      .mapWith(tuple => Parser.convertToDateTime(tuple._1).getMillis)
-      .assignAscendingTimestamps(ts => ts)
-      .timeWindowAll(Time.days(7), Time.minutes(5))
-      .process(new CountProcessWithStateSliding)
-      .mapWith(res => {
-        val startWindow = new DateTime(res._1, DateTimeZone.UTC)
-        println("global  " + startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), res._2.mkString(" "))
-      })
-
-  }
-
   def executeWithTumblingWindow(ds: DataStream[(String, String, String)]): Unit = {
 
     // Remove bidirectional friendships
