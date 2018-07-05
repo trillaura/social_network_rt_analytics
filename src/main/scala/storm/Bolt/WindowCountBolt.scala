@@ -1,5 +1,6 @@
 package storm.Bolt
 
+import java.beans.Transient
 import java.util
 import java.util.Date
 
@@ -19,10 +20,9 @@ import scala.collection.mutable
 
 class WindowCountBolt extends BaseRichBolt {
 
-  @transient
-  private lazy val windowConfiguration: mutable.Map[String, Duration] = new mutable.HashMap[String, Duration]()
+  private val windowConfiguration: mutable.Map[String, Long] = new mutable.HashMap[String, Long]()
 
-  private val windowPerPost: util.HashMap[String, Window] = new util.HashMap[String, Window]()
+  private var windowPerPost: util.HashMap[String, Window] = _
 
   private var windowStart: Long = 0
 
@@ -30,29 +30,32 @@ class WindowCountBolt extends BaseRichBolt {
   private var _collector: OutputCollector = _
 
 
-  def withTumblingWindow(duration: BaseWindowedBolt.Duration) = {
+  def withTumblingWindow(duration: Long) = {
     withSlidingWindow(duration, duration)
   }
 
-  def withSlidingWindow(size: BaseWindowedBolt.Duration, slide: BaseWindowedBolt.Duration) = {
-    if (size.value <= 0) throw new IllegalArgumentException("Window slide must be positive [" + size + "]")
-    if (size.value < slide.value) throw new IllegalArgumentException("Window slide must be less than [" + size + "]")
+  def withSlidingWindow(size: Long, slide: Long) = {
+    if (size <= 0) throw new IllegalArgumentException("Window slide must be positive [" + size + "]")
+    if (size < slide) throw new IllegalArgumentException("Window slide must be less than [" + size + "]")
 
     windowConfiguration.put(Config.TOPOLOGY_BOLTS_SLIDING_INTERVAL_DURATION_MS, slide)
     windowConfiguration.put(Config.TOPOLOGY_BOLTS_WINDOW_SIZE_MS, size)
 
-    val slot = size.value / slide.value
+    val slot = (size / slide).toInt
     if (slot == 0) throw new IllegalArgumentException("Window slide must be multiple of [" + size + "]")
     else nSlot = slot
     this
   }
 
-  override def prepare(stormConf: util.Map[_, _], context: TopologyContext, collector: OutputCollector): Unit = _collector = collector
+  override def prepare(stormConf: util.Map[_, _], context: TopologyContext, collector: OutputCollector): Unit = {
+    windowPerPost = new util.HashMap[String, Window]()
+    _collector = collector
+  }
 
 
   override def execute(input: Tuple): Unit = {
 
-    if (input.getSourceStreamId.equals("Metronome")) {
+    if (input.getSourceStreamId.equals("sMetronome")) {
       handleMetronomeMessage(input)
     } else {
       handlePostTuple(input)
@@ -63,13 +66,14 @@ class WindowCountBolt extends BaseRichBolt {
   def handleMetronomeMessage(tuple: Tuple): Unit = {
     val ts: Long = tuple.getStringByField("ts").toLong
 
-    val windowSlide: Long = windowConfiguration(Config.TOPOLOGY_BOLTS_SLIDING_INTERVAL_DURATION_MS).value.toLong // slide interval in ms
+    val windowSlide: Long = windowConfiguration(Config.TOPOLOGY_BOLTS_SLIDING_INTERVAL_DURATION_MS) // slide interval in ms
     val currentTime: Long = roundToCompletedMinute(ts)
 
     val elapsed: Long = currentTime - windowStart // elapsed time from last frame in ms
     val frameToSlide = (elapsed / windowSlide).toInt // forward window of fromToSlide nslot
 
     if (frameToSlide > 0) {
+      windowStart += (frameToSlide * windowSlide)
 
       val expired = new util.ArrayList[String]()
 
@@ -93,15 +97,12 @@ class WindowCountBolt extends BaseRichBolt {
 
           _collector.emit(values)
         }
-
-        // Free memory
-        val iterator = expired.iterator()
-        while (iterator.hasNext) {
-          val elem = iterator.next()
-          windowPerPost.remove(elem)
-        }
-
-        windowStart += frameToSlide * windowSlide
+      }
+      // Free memory
+      val iterator = expired.iterator()
+      while (iterator.hasNext) {
+        val elem = iterator.next()
+        windowPerPost.remove(elem)
       }
     }
 
@@ -113,13 +114,15 @@ class WindowCountBolt extends BaseRichBolt {
     val id: String = tuple.getStringByField("post_commented")
     val count: Int = tuple.getStringByField("count").toInt
 
-    val windowSlide: Long = windowConfiguration(Config.TOPOLOGY_BOLTS_SLIDING_INTERVAL_DURATION_MS).value.toLong // slide interval in ms
+    val windowSlide: Long = windowConfiguration(Config.TOPOLOGY_BOLTS_SLIDING_INTERVAL_DURATION_MS) // slide interval in ms
     val currentTime: Long = roundToCompletedMinute(ts)
 
     val elapsed: Long = currentTime - windowStart // elapsed time from last frame in ms
     val frameToSlide = (elapsed / windowSlide).toInt // forward window of fromToSlide nslot
 
     if (frameToSlide > 0) {
+      windowStart += (frameToSlide * windowSlide)
+
       val expired = new util.ArrayList[String]()
 
       for (postID: String <- windowPerPost.keySet().asScala) {
@@ -128,18 +131,19 @@ class WindowCountBolt extends BaseRichBolt {
 
           w.moveForward(frameToSlide)
 
-          if (postID == id) {
+          if (postID != id) {
             val count: String = w.estimateTotal().toString
             if (w.estimateTotal() == 0) {
               expired.add(postID)
-            }
-            val values: Values = new Values()
-            values.add(ts.toString)
-            values.add(postID)
-            values.add(count)
-            values.add(windowStart.toString)
+            } else {
+              val values: Values = new Values()
+              values.add(ts.toString)
+              values.add(postID)
+              values.add(count)
+              values.add(windowStart.toString)
 
-            _collector.emit(values)
+              _collector.emit(values)
+            }
           }
         }
       }
@@ -150,8 +154,6 @@ class WindowCountBolt extends BaseRichBolt {
         val elem = iterator.next()
         windowPerPost.remove(elem)
       }
-
-      windowStart += frameToSlide * windowSlide
 
     }
 
@@ -170,6 +172,8 @@ class WindowCountBolt extends BaseRichBolt {
     } else {
       w.increment()
     }
+
+
     _collector.ack(tuple)
   }
 
@@ -188,7 +192,7 @@ class WindowCountBolt extends BaseRichBolt {
 
   def isValid(timestamp: Long): Boolean = {
     val date = new DateTime(timestamp).withZone(DateTimeZone.UTC)
-    val windowLength = windowConfiguration(Config.TOPOLOGY_BOLTS_WINDOW_SIZE_MS).value
+    val windowLength = windowConfiguration(Config.TOPOLOGY_BOLTS_WINDOW_SIZE_MS)
 
     if (windowLength == Config.dailyCountWindowSize && date.getMinuteOfHour == 0 ||
       windowLength == Config.weeklyCountWindowSize && date.getHourOfDay == 0) return true
