@@ -1,17 +1,15 @@
 package kafka_streams
 
 import java.util
-import java.util.Map
 import java.util.Properties
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 
 import com.lightbend.kafka.scala.streams._
-import org.apache.avro.generic.GenericRecord
-import org.apache.kafka.common.metrics.KafkaMetric
 import org.apache.kafka.common.serialization._
 import org.apache.kafka.streams.{Consumed, KafkaStreams, StreamsConfig, Topology}
 import org.apache.kafka.streams.kstream.{Printed, Serialized, _}
-import org.apache.kafka.streams.state.{StoreBuilder, Stores}
+import org.apache.kafka.streams.state.Stores
+import org.joda.time.{DateTime, DateTimeZone}
 import utils.kafka.KafkaAvroParser
 import utils.{Configuration, Parser, SerializerAny}
 
@@ -21,7 +19,7 @@ object Query1 {
   private val longSerde = Serdes.Long.asInstanceOf[Serde[scala.Long]]
   private val intSerde = Serdes.Integer.asInstanceOf[Serde[Int]]
 
-  val DEBUG = true
+  val DEBUG = false
     /*
  * 1) Create the input and output topics used by this example.
  * $ bin/kafka-topics.sh --create --topic wordcount-input --zookeeper zookeeper:2181 --partitions 1 --replication-factor 1
@@ -35,7 +33,7 @@ object Query1 {
  *
  * 4) Inspect the resulting data in the output topic "streams-wordcount-output"
  *      e.g.:
- * $ bin/kafka-console-consumer --topic streams-wordcount-output --from-beginning --new-consumer --bootstrap-server kafka0:9092 --property print.key=true --property value.deserializer=org.apache.kafka.common.serialization.StringDeserializer
+   * $ bin/kafka-console-consumer.sh --topic test --from-beginning --new-consumer --bootstrap-server kafka0:9092 --property print.key=true --property value.deserializer=org.apache.kafka.common.serialization.ByteArrayDeserializer
  */
 
   def createAvroStreamProperties(): Properties = {
@@ -47,13 +45,17 @@ object Query1 {
     props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, Configuration.BOOTSTRAP_SERVERS)
     // Specify default (de)serializers for record keys and for record values.
     props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG,
-      Serdes.String().getClass.getName)
+      Serdes.Long.getClass.getName)
     props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG,
-      Serdes.ByteArray().getClass.getName)
+      Serdes.ByteArray.getClass.getName)
 
 //    props.put(StreamsConfig.METRICS_RECORDING_LEVEL_CONFIG, "DEBUG")
 
     props.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG, classOf[EventTimestampExtractor])
+
+    props.put("log.cleanup.policy", "compact")
+    props.put("log.cleaner.min.compaction.lag.ms", "60000")
+    props.put("log.retention.check.interval.ms", "1000")
 
     // Records should be flushed every 10 seconds.
     props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, "10000")
@@ -67,153 +69,136 @@ object Query1 {
     val props: Properties = createAvroStreamProperties()
     val builder: StreamsBuilderS = new StreamsBuilderS()
 
-    val supplier = Stores.keyValueStoreBuilder(Stores.inMemoryKeyValueStore(Configuration.STATE_STORE_NAME), Serdes.String, Serdes.ByteArray())
-      .withLoggingEnabled(new util.HashMap[String,String]())
+    val topic_config = new util.HashMap[String,String]()
+    val supplier = Stores.keyValueStoreBuilder(
+      Stores.inMemoryKeyValueStore(Configuration.STATE_STORE_NAME), Serdes.String, Serdes.ByteArray())
+      .withLoggingEnabled(topic_config)
 
     builder.addStateStore(supplier)
 
     // Construct a `KStream` from the input topic
-    val records_original: KStreamS[String, Array[Byte]] =
+    val records_original: KStreamS[Long, Array[Byte]] =
       builder
-        .stream[String, Array[Byte]](Configuration.FRIENDS_INPUT_TOPIC)(Consumed.`with`(Serdes.String, Serdes.ByteArray))
+        .stream[Long, Array[Byte]](Configuration.FRIENDS_INPUT_TOPIC)(Consumed.`with`(longSerde, Serdes.ByteArray))
 
-    val records_filtered: KStreamS[String, Int] =
+    val records_filtered: KStreamS[String, Long] =
       records_original
-        .flatMap(
-          (_, v) => {
+        .map(
+          (k: scala.Long, v: Array[Byte])
+          => {
             val r = KafkaAvroParser.fromByteArrayToFriendshipRecord(v)
-            val key = Parser.composeUserIDs(r)
-            val hour = Parser.getHour(r.get("ts"))
-
-            Iterable((key, hour))
+            val newKey = Parser.composeUserIDs(r)
+            (newKey, k)
           }
         )
-        .groupByKey(Serialized.`with`(Serdes.String, intSerde))
+        .groupByKey(Serialized.`with`(Serdes.String, longSerde))
         .reduce(
-          (v1, v2) => {
-            if (DEBUG) { println("Ignoring double friendships! "+ v1 + v2) }
-            v1
+          (timestamp, _) => {
+            if (DEBUG) { println("Ignoring double friendships! "+ timestamp) }
+            timestamp
           }
         )
         .toStream
 
     val resultsH24 = records_filtered
-      .flatMap(
-        (_, v) => {
-          val hour = v
-          Iterable((hour, 1l))
+      .map(
+        (_, timestamp) => {
+          (timestamp, 1l)
         }
       )
-      .groupByKey(Serialized.`with`(intSerde, longSerde))
-      .windowedBy(TimeWindows.of(24*60*60*1000))
-      .reduce(_+_)
+      .groupByKey(Serialized.`with`(longSerde, longSerde))
+      .windowedBy(TimeWindows.of(TimeUnit.HOURS.toMillis(24)).advanceBy(TimeUnit.HOURS.toMillis(24)))
+      .count("counter-by-h24-window")
       .toStream
-
-      .flatMap(
-        (k, v) => {
-          val res = Array.fill(24)(0l)
-          val hour_index = k.key()
-          res(hour_index) = v
-          Iterable((k.window().start(), SerializerAny.serialize(res)))
+      .map(
+        (windowed_k, v) => {
+          val init = windowed_k.window().start()
+          val hour = Parser.convertToDateTime(windowed_k.key()).getHourOfDay
+          val counter = v
+          val value = Array.fill(24)(0l)
+          value(hour) = counter
+          (init, SerializerAny.serialize(value))
         }
       )
       .groupByKey(Serialized.`with`(longSerde, Serdes.ByteArray()))
       .reduce(
-        (v1, v2) => {
-          val value1 = SerializerAny.deserialize(v1).asInstanceOf[Array[scala.Long]]
-          if (DEBUG) {
-            println("value1 ")
-            value1.foreach(x => printf("%d.",x))
+        (a,b) => {
+          val value1 = SerializerAny.deserialize(a).asInstanceOf[Array[scala.Long]]
+          val value2 = SerializerAny.deserialize(b).asInstanceOf[Array[scala.Long]]
+          val newVal = value1.zip(value2).map{case (x,y) => x+y}
+          SerializerAny.serialize(newVal)
+        }
+      )
+        .toStream
+
+        resultsH24.foreach(
+          (x, y) => {
+            val value = SerializerAny.deserialize(y).asInstanceOf[Array[Long]]
+            printf("init --> %s --> ", new DateTime(x, DateTimeZone.UTC).toString(Parser.TIMESTAMP_FORMAT))
+            value.foreach( d => printf("%d - ",d))
             printf("\n")
           }
-          val value2 = SerializerAny.deserialize(v2).asInstanceOf[Array[scala.Long]]
+        )
 
-          if (DEBUG) {
-            println("value2")
-            value1.foreach(x => printf("%d.",x))
-            printf("\n")
-          }
-
-          val res = value1.zip(value2).map{case (x,y) => x+y}
-
-          if (DEBUG) {
-            println("res")
-            res.foreach(x => printf("%d,",x))
-            printf("\n")
-          }
-          SerializerAny.serialize(res)
+    val resultsD7 = resultsH24
+      .groupByKey(Serialized.`with`(longSerde, Serdes.ByteArray))
+      .windowedBy(TimeWindows.of(TimeUnit.DAYS.toMillis(7)).advanceBy(TimeUnit.HOURS.toMillis(24)))
+      .reduce(
+        (a,b) => {
+          val value1 = SerializerAny.deserialize(a).asInstanceOf[Array[scala.Long]]
+          val value2 = SerializerAny.deserialize(b).asInstanceOf[Array[scala.Long]]
+          val newVal = value1.zip(value2).map{case (x,y) => x+y}
+          SerializerAny.serialize(newVal)
         }
       )
       .toStream
+      .selectKey((windowed_k, v) => windowed_k.window().start)
 
+    resultsD7
+      .foreach(
+        (x, y) => {
+          val value = SerializerAny.deserialize(y).asInstanceOf[Array[Long]]
+          printf("initD7 --> %s --> ", new DateTime(x, DateTimeZone.UTC).toString(Parser.TIMESTAMP_FORMAT))
+          value.foreach( d => printf("%d - ",d))
+          printf("\n")
+        }
+      )
 
-    val resultsD7 =
-      resultsH24
-        .groupByKey(Serialized.`with`(longSerde, Serdes.ByteArray))
-        .windowedBy(TimeWindows.of(7*24*60*60*1000))
-        .reduce(
-          (v1, v2) => {
-            val value1 = SerializerAny.deserialize(v1).asInstanceOf[Array[scala.Long]]
-            if (DEBUG) {
-              println("value1 ")
-              value1.foreach(x => printf("%d.",x))
-              printf("\n")
-            }
-            val value2 = SerializerAny.deserialize(v2).asInstanceOf[Array[scala.Long]]
-
-            if (DEBUG) {
-              println("value2")
-              value1.foreach(x => printf("%d.",x))
-              printf("\n")
-            }
-
-            val res = value1.zip(value2).map{case (x,y) => x+y}
-
-            if (DEBUG) {
-              println("res")
-              res.foreach(x => printf("%d,",x))
-              printf("\n")
-            }
-            SerializerAny.serialize(res)
+    val resultsAllTime = resultsH24
+      .map(
+        (timestamp, values) => {
+          val deser_values = SerializerAny.deserialize(values).asInstanceOf[Array[scala.Long]]
+          val new_values = Array.fill(25)(0l)
+          for (i <- new_values.indices) {
+            if (i == 0)
+              new_values(i) = timestamp
+            else
+              new_values(i) = deser_values(i-1)
           }
-        )
-        .toStream
-          .selectKey(
-            (k, _) => k.key()
-          )
-
-//    results7D
-    val resultsAllTime = resultsD7
-        .selectKey(
-          (_,_) => Configuration.STATE_STORE_NAME
-        )
+          (Configuration.STATE_STORE_NAME, SerializerAny.serialize(new_values))
+        }
+      )
       .transform(
-        () => new FromBeginningCountersProcessor(100), Configuration.STATE_STORE_NAME
-    )
+        () => new FromBeginningCounterTransformer(100), Configuration.STATE_STORE_NAME
+      )
 
-
-    if (DEBUG) {
-      resultsH24.flatMap(
-        (k, v) => {
-          val value = SerializerAny.deserialize(v).asInstanceOf[Array[scala.Long]]
-          printf("ts %d (", k)
-          value.foreach(x => printf("%d,", x))
-          printf(")\n")
-          Iterable()
+    resultsAllTime
+      .foreach(
+        (x, y) => {
+          val value = SerializerAny.deserialize(y).asInstanceOf[Array[Long]]
+          printf("initALLTIME --> %s --> ", new DateTime(value(0), DateTimeZone.UTC).toString(Parser.TIMESTAMP_FORMAT))
+          value.foreach( d => printf("%d - ",d))
+          printf("\n")
         }
       )
-      resultsD7.flatMap(
-        (k, v) => {
-          val value = SerializerAny.deserialize(v).asInstanceOf[Array[scala.Long]]
-          printf("ts %s (", k)
-          value.foreach(x => printf("%d,", x))
-          printf(")\n")
-          Iterable()
-        }
-      )
-    }
 
-    if (DEBUG) { resultsH24.print(Printed.toSysOut[scala.Long, Array[Byte]]) }
+//    if (DEBUG) { resultsH24.toStream.print(Printed.toSysOut[scala.Long, Array[Byte]]) }
+//    if (DEBUG) { resultsD7.print(Printed.toSysOut[scala.Long, Array[Byte]]) }
+//    if (DEBUG) { resultsAllTime.print(Printed.toSysOut[String, Array[Byte]]) }
+
+//    resultsH24.process(
+//      () => new FileWriterProcessor(100)
+//    )
 
     //         Write the `KTable<String, Long>` to the output topic.
     resultsH24.to(Configuration.FRIENDS_OUTPUT_TOPIC_H24)(Produced.`with`(longSerde, Serdes.ByteArray()))

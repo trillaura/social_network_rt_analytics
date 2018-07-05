@@ -5,35 +5,39 @@ import org.apache.kafka.streams.processor.ProcessorContext
 import org.apache.kafka.streams.state.KeyValueStore
 import utils.{Configuration, SerializerAny}
 
-class FromBeginningCountersProcessor(punctuateTime: Long) extends Transformer[String, Array[Byte], (String, Array[Byte])] {
+class FromBeginningCounterTransformer(punctuateTime: Long) extends Transformer[String, Array[Byte], (String, Array[Byte])] {
 
   private var stateFromBeginning: KeyValueStore[String, Array[Byte]] = _
+  private var minimumTimestamp: Long = _
 
-  override def init(context: ProcessorContext): Unit =
+  override def init(context: ProcessorContext): Unit = {
     stateFromBeginning = context.getStateStore(Configuration.STATE_STORE_NAME).asInstanceOf[KeyValueStore[String, Array[Byte]]]
+    minimumTimestamp = Long.MaxValue
+  }
 
 
   override def transform(key: String, value: Array[Byte]): (String, Array[Byte]) = {
 
-    val state = stateFromBeginning.get(key)
+    val state = stateFromBeginning.get(Configuration.STATE_STORE_NAME)
 
     var current_state : Array[Long] = Array.fill(25)(0l)
     if (state != null) {
       current_state = SerializerAny.deserialize(state).asInstanceOf[Array[Long]]
     }
-    var init_timestamp = current_state(0)
+//    var init_timestamp = current_state(0)
 
-    val actual_value = SerializerAny.deserialize(value).asInstanceOf[Array[Long]]
-    if (init_timestamp == 0l || init_timestamp > actual_value(0)) { init_timestamp = actual_value(0) }
+    val incoming_value = SerializerAny.deserialize(value).asInstanceOf[Array[Long]]
+    if (minimumTimestamp == Long.MaxValue || minimumTimestamp > incoming_value(0)) { minimumTimestamp = incoming_value(0) }
 
-    val state_updated = current_state.zip(actual_value).map{case (x,y) => x+y}
+    val state_updated = current_state.zip(incoming_value).map{case (x,y) => x+y}
 
-    state_updated(0) = init_timestamp
+    state_updated(0) = minimumTimestamp
 
     val new_value = SerializerAny.serialize(state_updated)
-    stateFromBeginning.put(key, new_value)
+//    stateFromBeginning.put(key, new_value)
+    stateFromBeginning.put(Configuration.STATE_STORE_NAME, new_value)
 
-    (key, new_value)
+    (Configuration.STATE_STORE_NAME, new_value)
   }
 
   override def punctuate(timestamp: Long): (String, Array[Byte]) = {
