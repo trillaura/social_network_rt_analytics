@@ -44,7 +44,9 @@ lazy val social_rt_analytics = (project in file("."))
       "org.apache.flink" %% "flink-connector-kafka-0.11" % flinkVersion,
       "com.lightbend" %% "kafka-streams-scala" % "0.2.1",
       "com.github.cb372" %% "scalacache-guava" % "0.24.2",
-      "net.debasishg" %% "redisclient" % "3.7"
+      "net.debasishg" %% "redisclient" % "3.7",
+      "com.google.code.gson" % "gson" % "2.8.5"
+
     ),
 
     libraryDependencies ++= flinkDependencies,

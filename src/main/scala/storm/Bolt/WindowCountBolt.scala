@@ -30,11 +30,11 @@ class WindowCountBolt extends BaseRichBolt {
   private var _collector: OutputCollector = _
 
 
-  private def withTumblingWindow(duration: BaseWindowedBolt.Duration) = {
+  def withTumblingWindow(duration: BaseWindowedBolt.Duration) = {
     withSlidingWindow(duration, duration)
   }
 
-  private def withSlidingWindow(size: BaseWindowedBolt.Duration, slide: BaseWindowedBolt.Duration) = {
+  def withSlidingWindow(size: BaseWindowedBolt.Duration, slide: BaseWindowedBolt.Duration) = {
     if (size.value <= 0) throw new IllegalArgumentException("Window slide must be positive [" + size + "]")
     if (slide.value < size.value) throw new IllegalArgumentException("Window slide must be less than [" + size + "]")
 
@@ -88,7 +88,7 @@ class WindowCountBolt extends BaseRichBolt {
           values.add(ts.toString)
           values.add(postID)
           values.add(count)
-          values.add(windowSlide)
+          values.add(windowStart)
 
 
           _collector.emit(values)
@@ -137,7 +137,7 @@ class WindowCountBolt extends BaseRichBolt {
             values.add(ts.toString)
             values.add(postID)
             values.add(count)
-            values.add(windowSlide)
+            values.add(windowStart)
 
             _collector.emit(values)
           }
@@ -183,7 +183,7 @@ class WindowCountBolt extends BaseRichBolt {
   }
 
   override def declareOutputFields(declarer: OutputFieldsDeclarer): Unit = {
-    declarer.declare(new Fields("ts", "postID", "count", "start"))
+    declarer.declare(new Fields("ts", "post_commented", "count", "start"))
   }
 
   def isValid(timestamp: Long): Boolean = {
