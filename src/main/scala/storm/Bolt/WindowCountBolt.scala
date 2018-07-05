@@ -98,13 +98,7 @@ class WindowCountBolt extends BaseRichBolt {
   }
 
   def handlePostTuple(tuple: Tuple): Unit = {
-    val ts: Long = tuple.getStringByField("ts").toLong
     val id: String = tuple.getStringByField("post_commented")
-
-    val slotSize: Int = windowConfiguration(Config.TOPOLOGY_BOLTS_WINDOW_SIZE_MS).value /
-      windowConfiguration(Config.TOPOLOGY_BOLTS_SLIDING_INTERVAL_DURATION_MS).value
-
-    val latestTimeFrame: Long = roundToCompletedMinute(ts)
 
     var w: Window = windowPerPost.get(id)
     if (w == null) {
@@ -112,16 +106,6 @@ class WindowCountBolt extends BaseRichBolt {
       windowPerPost.put(id, w)
     }
     w.increment()
-
-    val count: String = w.estimateTotal().toString
-
-    val values: Values = new Values()
-    values.add(ts.toString)
-    values.add(id)
-    values.add(count)
-    values.add(latestCompletedTimeframe.toString)
-
-    _collector.emit(values)
     _collector.ack(tuple)
 
   }
