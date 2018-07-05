@@ -135,16 +135,16 @@ class WindowCountBolt extends BaseRichBolt {
             val count: String = w.estimateTotal().toString
             if (w.estimateTotal() == 0) {
               expired.add(postID)
-            } else {
-              val values: Values = new Values()
-              values.add(ts.toString)
-              values.add(postID)
-              values.add(count)
-              values.add(windowStart.toString)
-
-              _collector.emit(values)
             }
+            val values: Values = new Values()
+            values.add(ts.toString)
+            values.add(postID)
+            values.add(count)
+            values.add(windowStart.toString)
+
+            _collector.emit(values)
           }
+
         }
       }
 
@@ -173,7 +173,14 @@ class WindowCountBolt extends BaseRichBolt {
       w.increment()
     }
 
+    val value = w.computeTotal
+    val values: Values = new Values()
+    values.add(ts.toString)
+    values.add(id)
+    values.add(value.toString)
+    values.add(windowStart.toString)
 
+    _collector.emit(values)
     _collector.ack(tuple)
   }
 

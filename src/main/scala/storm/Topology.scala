@@ -35,7 +35,7 @@ object Topology {
       .shuffleGrouping("filter")
 
     builder.setBolt("hourlyCount", new WindowCountBolt().withSlidingWindow(
-      Bolt.Config.dailyCountWindowSize, 24 * 60 * 60 * 1000))
+      Bolt.Config.hourlyCountWindowSize,  5 * 60 * 1000))
       .setNumTasks(3)
       .fieldsGrouping("filter", new Fields("post_commented"))
       .allGrouping("metronome", "sMetronome")
