@@ -1,6 +1,12 @@
 package utils.ranking
 
-case class SimpleScore( value : Int) extends Score {
+
+/**
+  * Simple score made of one integer
+  * @param value
+  */
+case class SimpleScore(value : Int) extends Score {
+
   override def add(other: Any): Score = {
     if(!other.isInstanceOf[SimpleScore]){ println("Trying to add two scores with different types"); return this; }
     val otherScore = other.asInstanceOf[SimpleScore]

@@ -1,22 +1,13 @@
-import java.lang
 import java.util.concurrent.TimeUnit
-
-import QueryTwo.env
-import model.UserConnection
-import org.apache.flink.api.common.functions.AggregateFunction
+import flink_operators.{GlobalRanker, PartialRanker, UserScoreAggregator}
 import org.apache.flink.streaming.api.TimeCharacteristic
-import org.apache.flink.streaming.api.functions.ProcessFunction
-import org.apache.flink.streaming.api.functions.co.CoMapFunction
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
-import org.apache.flink.streaming.api.scala.function.{ProcessAllWindowFunction, ProcessWindowFunction}
-import org.apache.flink.streaming.api.windowing.assigners.{GlobalWindows, TumblingEventTimeWindows, TumblingProcessingTimeWindows}
+import org.apache.flink.streaming.api.windowing.assigners.SlidingEventTimeWindows
 import org.apache.flink.streaming.api.windowing.time.Time
-import org.apache.flink.streaming.api.windowing.windows.TimeWindow
-import org.apache.flink.util.Collector
 import org.apache.flink.streaming.api.scala._
-import org.joda.time.{DateTime, DateTimeZone}
-import utils.ranking.{RankingBoard, RankingResult}
+import utils.ranking.UserScore
 import utils.Parser
+
 
 object QueryThree {
 
@@ -26,142 +17,45 @@ object QueryThree {
 
   val friendshipData = env.readTextFile("dataset/friendships.dat")
     .assignAscendingTimestamps(t => Parser.extractTimeStamp(t))
-    .map( line => (Parser.userIDFromFriendship(line), 1))
+    .map( line => (Parser.userIDFromFriendship(line), UserScore(1,0,0) ))
 
   val commentsData = env.readTextFile("dataset/comments.dat")
     .assignAscendingTimestamps(t => Parser.extractTimeStamp(t))
-    .map( line => (Parser.userIDFromComment(line), 1) )  //.flatMap{ Parser.parseComment(_)}
+    .map( line => (Parser.userIDFromComment(line), UserScore(0,0,1) ))
 
   val postsData = env.readTextFile("dataset/posts.dat")
     .assignAscendingTimestamps(t => Parser.extractTimeStamp(t))
-    .map( line => (Parser.userIDFromPost(line), 1) )    //.flatMap{ Parser.parsePost(_)}
+    .map( line => (Parser.userIDFromPost(line), UserScore(0,1,0) ))
 
   def main(args: Array[String]) : Unit = {
 
-    val union = postsData.union(commentsData, friendshipData)
+    val hourlyResults = postsData.union(commentsData, friendshipData)
       .keyBy(_._1)
-      .window(TumblingEventTimeWindows.of(Time.days(7)))
-      .aggregate(new MyAggregate, new MyProcess)
-      .process(new RankProcessFunction)
-      .setParallelism(2)
-      .process(new MergeRankProcessFunction)
-      .writeAsText("results/q3")
+      .window(SlidingEventTimeWindows.of(Time.hours(1), Time.minutes(30)))
+      .aggregate(new UserScoreAggregator, new PartialRanker)
+      .process(new GlobalRanker)
 
+    hourlyResults.writeAsText("results/q3-hourly")
 
-    /*val union = postsData.union(commentsData, friendshipData)
-      .assignAscendingTimestamps(tuple => Parser.extractTimeStamp(tuple._2))
-      .map{ tuple =>
-        var outTuple = (1L, 1)
-        tuple._1 match {
-          case 1 => outTuple = (Parser.userIDFromFriendship(tuple._2), 1)
-          case 2 => outTuple = (Parser.userIDFromComment(tuple._2), 1)
-          case 3 => outTuple = (Parser.userIDFromPost(tuple._2), 1)
-        }
-        outTuple
-      }
-      .keyBy(_._1)
-      .window(TumblingEventTimeWindows.of(Time.days(7)))
-      .aggregate(new MyAggregate, new MyProcess)
-      .process(new RankProcessFunction)
-      .setParallelism(2)
-      .process(new MergeRankProcessFunction)
-      .writeAsText("results/q3") */
+    val dailyResults = hourlyResults
+      .assignAscendingTimestamps(res => Parser.millisFromStringDate(res.timestamp))
+      .windowAll(SlidingEventTimeWindows.of(Time.hours(24), Time.hours(1) ))
+      .reduce(_ mergeRank _)
 
-    /*friendshipData.connect(union)
-      .map(new CoMapFunction[UserConnection, String, String] {
-        override def map1(value: UserConnection): String = ???
+    dailyResults.writeAsText("results/q3-daily")
 
-        override def map2(value: String): String = ???
-      }) */
+    val weeklyResults = dailyResults
+      .assignAscendingTimestamps(res => Parser.millisFromStringDate(res.timestamp))
+      .windowAll(SlidingEventTimeWindows.of(Time.days(7),Time.days(1)))
+      .reduce(_ mergeRank _)
 
-    /*friendshipData.union(commentsData,postsData)
-      .map(el => if(el == "2010-02-03T16:35:50.015+0000|1564|3825"){println(el)})
+    weeklyResults.writeAsText("results/q3-weekly")
 
-      .windowAll(TumblingProcessingTimeWindows.of(Time.seconds(1)))
-      .process(new ProcessAllWindowFunction[String,String,TimeWindow] {
-        override def process(context: Context, elements: Iterable[String], out: Collector[String]): Unit = {
-          elements.foreach(println(_))
-        }
-      }) */
     val executingResults = env.execute()
     println("Query 3 Execution took " + executingResults.getNetRuntime(TimeUnit.SECONDS) + " seconds")
   }
 
-  class MergeRankProcessFunction extends ProcessFunction[RankingResult[Long], RankingResult[Long]]{
 
-    println("Merge Rank Operator in Thread " + Thread.currentThread().getId)
-    override def processElement(value: RankingResult[Long],
-                                ctx: ProcessFunction[RankingResult[Long], RankingResult[Long]]#Context,
-                                out: Collector[RankingResult[Long]]): Unit = {
-      out.collect(value)
-    }
-  }
-
-  class RankProcessFunction extends ProcessFunction[(Long, Int), RankingResult[Long]]{
-
-    var lastWatermark : Long = 0
-    var rankingBoard : RankingBoard[Long] = _
-
-    override def processElement(value: (Long, Int), ctx: ProcessFunction[(Long, Int), RankingResult[Long]]#Context, out: Collector[RankingResult[Long]]): Unit = {
-
-
-      if(rankingBoard == null){
-        rankingBoard = new RankingBoard[Long]()
-        println("Ranking board init for thread " + Thread.currentThread().getId)
-
-      }
-      val currentWatermark = ctx.timerService().currentWatermark()
-      if(currentWatermark < 0) {
-        println("Watermark is negative")
-      }
-
-      rankingBoard.incrementScoreBy(value._1, value._2)
-
-      if(rankingBoard.rankHasChanged()) {
-        val ranking = rankingBoard.topK()
-        if(ranking.size == rankingBoard.K) {
-          val output = new RankingResult[Long](new DateTime(currentWatermark).toDateTime(DateTimeZone.UTC).toString(), ranking, rankingBoard.K)
-          println("Operator " + Thread.currentThread().getId + " output " +output)
-          out.collect(output)
-        }
-      }
-      //println("utils.ranking.Score of " + rankingBoard.scoreOf(120260221010L))
-
-
-      if(currentWatermark > lastWatermark){
-        if(lastWatermark != 0){
-          // out.collect(new Result[Long](new DateTime(currentWatermark).toDateTime(DateTimeZone.UTC).toString(), rankingBoard.topK()))
-        }
-        lastWatermark = currentWatermark
-        rankingBoard.clear()
-      }
-    }
-  }
-
-  class MyProcess extends ProcessWindowFunction[Int, (Long, Int), Long, TimeWindow]{
-    override def process(key: Long, context: Context, elements: Iterable[Int], out: Collector[(Long, Int)]): Unit = {
-      val value = elements.iterator.next()
-      out.collect( (key, value) )
-    }
-  }
-
-  class MyAggregate extends AggregateFunction[(Long, Int), Int, Int]{
-    override def createAccumulator(): Int = {
-      0
-    }
-
-    override def add(value: (Long, Int), accumulator: Int): Int = {
-      value._2 + accumulator
-    }
-
-    override def getResult(accumulator: Int): Int = {
-      accumulator
-    }
-
-    override def merge(a: Int, b: Int): Int = {
-      a + b
-    }
-  }
 
 
 }
