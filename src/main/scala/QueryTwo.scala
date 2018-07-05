@@ -28,6 +28,8 @@ import scala.collection.mutable.ListBuffer
 import scala.collection.parallel.immutable
 import java.util.Properties
 
+import org.apache.flink.streaming.api.windowing.triggers.{Trigger, TriggerResult}
+
 
 /**
   * (120260221010,20)
@@ -58,35 +60,17 @@ object QueryTwo {
   private val stream = env
     .addSource(new FlinkKafkaConsumer011(utils.Configuration.COMMENTS_INPUT_TOPIC, new CommentsAvroDeserializationSchema, properties))
 
-  def executeWindowAll() : Unit = {
-    val results = data
-      .flatMap {  Parser.parseComment(_)  filter { _.isPostComment() } }
-      .assignAscendingTimestamps(_.timestamp.getMillis )
-      .map(postComment => (postComment.parentID, 1))
-      .windowAll(TumblingEventTimeWindows.of(Time.hours(1)))
-      .process(new WindAFunction)
-      .setParallelism(2)
-      .process(new MergeRank)
-
-  }
-
 
 
   def executeParallel() : Unit = {
     val hourlyResults = data
       .flatMap {  Parser.parseComment(_)  filter { _.isPostComment() } }
       .assignAscendingTimestamps( _.timestamp.getMillis )
-      .map(postComment => (postComment.parentID, 1))
-      //.map(postComment => GenericRankElement[Long](id = postComment.parentID, score = SimpleScore(1)))
-      //.keyBy(_.id)
+      .map(postComment => (postComment.parentID, SimpleScore(1)))
       .keyBy(_._1)
-      //.timeWindow(Time.hours(1))
-      .window(TumblingEventTimeWindows.of(Time.hours(1)))
-      .reduce( new SumReduceFunction , new PartialRankProcessWindowFunction)
+      .window(SlidingEventTimeWindows.of(Time.hours(1),Time.minutes(30)))
+      .aggregate(new SimpleScoreAggregator,new PartialRankProcessWindowFunction)
       .setParallelism(2)
-      //.setParallelism(4)
-      //.process(new TopKProcessFunction(10))
-      //.setParallelism(2)
       .process(new MergeRank)
       .setParallelism(1)
 
@@ -120,96 +104,153 @@ object QueryTwo {
   }
 }
 
+/**
+  * Aggregates incoming scores for given key to get
+  * total score
+  */
+class SimpleScoreAggregator extends AggregateFunction[(Long, SimpleScore), Score, Score]{
+  override def createAccumulator(): Score = SimpleScore(0)
+  override def add(value: (Long, SimpleScore), accumulator: Score): Score = accumulator.add(value._2)
+  override def getResult(accumulator: Score): Score = accumulator
+  override def merge(a: Score, b: Score): Score = a.add(b)
+}
 
 
-class MergeRank extends ProcessFunction[RankingResult[Long], RankingResult[Long]] {
+/**
+  * Merges partial ranks into global one
+  * coming from different operators.
+  * It also keeps only recent partial ranks,
+  * periodically discarding old ones
+  */
+class MergeRank extends ProcessFunction[GenericRankingResult[Long], GenericRankingResult[Long]] {
 
-  var hashMap : mutable.HashMap[String, RankingResult[Long]] = _
-  var lastTimestampLong = 0L
-  var lastTimestampString = ""
 
-  override def processElement(value: RankingResult[Long],
-                              ctx: ProcessFunction[RankingResult[Long], RankingResult[Long]]#Context,
-                              out: Collector[RankingResult[Long]]): Unit = {
+  //private var hashMap =  mutable.HashMap[String,  GenericRankingResult[Long]]()
 
-    if(hashMap == null){
-      hashMap = mutable.HashMap[String,  RankingResult[Long]]()
-      println("Merge Rank started in Thread " + Thread.currentThread().getId)
-    }
+  /* for how much millis to keep partial rankings */
+  private val delta = 1000 * 60 * 10 /* 10 minutes */
 
+  /* keeps the partial rankings and computes global one */
+  private var globalRankingHolder: GlobalRankingHolder[Long] = new GlobalRankingHolder[Long](delta)
+
+  /* keeps last seen timestamp as to filter
+   * incoming late partial rankings */
+  private var lastTimestampLong = 0L
+
+  override def processElement(value: GenericRankingResult[Long],
+                              ctx: ProcessFunction[GenericRankingResult[Long], GenericRankingResult[Long]]#Context,
+                              out: Collector[GenericRankingResult[Long]]): Unit = {
+
+
+    /* current partial ranking timestamp */
     val timestamp = value.timestamp
-    if(Parser.millisFromStringDate(timestamp) < lastTimestampLong){
-      println("Timestamp already passed")
-      hashMap.remove(timestamp) /* remove old ranking */
+    val timestampMillis = Parser.millisFromStringDate(timestamp)
+
+
+    if(timestampMillis < lastTimestampLong){
+      /* clear old partial rankings */
+      globalRankingHolder.clearOldRankings(currentTimestamp = timestampMillis)
     } else {
+      /* output global rank computes using current partial ranking */
+      out.collect(globalRankingHolder.globalRanking(partialRanking = value))
 
-      if (!hashMap.contains(timestamp)) {
-        /* new ranking, no previous one present */
-        hashMap += (timestamp -> value)
-        out.collect(value)
-      } else {
-        val previousRanking = hashMap(timestamp)
-        val mergedRank = previousRanking.mergeRank(value)
-        hashMap += (timestamp -> mergedRank)
-        out.collect(mergedRank)
-      }
-
-      lastTimestampString = timestamp
-      lastTimestampLong = Parser.millisFromStringDate(lastTimestampString)
-
+      /* update last seen timestamp with current */
+      lastTimestampLong = timestampMillis
     }
+
   }
 }
 
 
-class PartialRankProcessWindowFunction extends ProcessWindowFunction[(Long, Int), RankingResult[Long], Long, TimeWindow]{
+/**
+  * A partial ranking operator that is combined with an
+  * AggregatedFunction to incrementally aggregate elements
+  * as they arrive in the current time window and update their ranking.
+  * Outputs ranking only if it has changed from the previously sent one.
+  * It also clear the ranking if the sliding time window advances
+  */
+class PartialRankProcessWindowFunction
+  extends ProcessWindowFunction[Score, GenericRankingResult[Long], Long, TimeWindow]{
 
-  var partialRankBoard : RankingBoard[Long] = _
-  var lastWatermark : Long = 0
+  /* keeps the partial ranking of the current operator instance */
+  var partialRankBoard : GenericRankingBoard[Long] = new GenericRankingBoard[Long]()
 
+  /* keeps the last time window start to compare it with new ones
+   * and know when to clear ranking for new window */
+  var lastTimeWindowStart : Long = 0
+
+
+  /**
+    * called when new value elements are ready
+    * to be processed in the current time window
+    * for the specific key
+    * @param key  postID or userID
+    * @param context
+    * @param elements scores
+    * @param out
+    */
   override def process(key: Long,
                        context: Context,
-                       elements: Iterable[(Long, Int)],
-                       out: Collector[RankingResult[Long]]): Unit = {
-    if(partialRankBoard == null){
-      partialRankBoard = new RankingBoard[Long]()
-      println("Partial ranking board init for Operator in Thread " + Thread.currentThread().getId)
-    }
+                       elements: Iterable[Score],
+                       out: Collector[GenericRankingResult[Long]]): Unit = {
 
-    val currentWatermark = context.currentWatermark
-    val date = new DateTime(currentWatermark).toDateTime(DateTimeZone.UTC).toString()
 
-    val value = elements.iterator.next()
-    partialRankBoard.incrementScoreBy(value._1, value._2)
+    /* get current time window */
+    val currentTimeWindow = context.window
+    updateState(currentTimeWindow)
 
-    if(date.contains("2012")){
-      println("2012")
-    }
+    incrementScore(key,elements.iterator.next())
 
+    outputPartialRankingIfChanged(out, currentTimeWindow)
+
+  }
+
+  /**
+    * outputs the current partial ranking to the next
+    * operator only if the ranking has changed and it's
+    * not empty
+    * @param out collector that forwards data to the next operator
+    * @param currentWindow time window
+    */
+  def outputPartialRankingIfChanged(out: Collector[GenericRankingResult[Long]], currentWindow: TimeWindow) = {
     if(partialRankBoard.rankHasChanged()) {
-      val ranking = partialRankBoard.topK()
-      //if(ranking.size == partialRankBoard.K) {
 
-
-
-        val timestamp = new DateTime(currentWatermark).toString() //.toDateTime(DateTimeZone.UTC).toString()
-        val output = new RankingResult[Long](timestamp, ranking, partialRankBoard.K)
-        //println("Operator " + Thread.currentThread().getId + " output " +output)
+      val ranking = partialRankBoard.topK() /* Top-K in current window */
+      if(ranking.nonEmpty) {
+        /* sets the statistic's start timestamp as the current window's start time */
+        val windowStartTimeStamp = Parser.convertToDateString(currentWindow.getStart)
+        /* outputs the current partial Top-K ranking with its relative start timestamp */
+        val output = new GenericRankingResult[Long](windowStartTimeStamp, ranking, partialRankBoard.K)
         out.collect(output)
-      //}
-    }
-
-    if(currentWatermark > lastWatermark){
-      if(lastWatermark != 0){
-        // out.collect(new Result[Long](new DateTime(currentWatermark).toDateTime(DateTimeZone.UTC).toString(), rankingBoard.topK()))
-        val ranking = partialRankBoard.topK()
-        val timestamp = new DateTime(currentWatermark).toDateTime(DateTimeZone.UTC).toString()
-        val output = new RankingResult[Long](timestamp, ranking, partialRankBoard.K)
       }
-      lastWatermark = currentWatermark
+    }
+  }
+
+  /**
+    * updates last time window start time if the current one
+    * is starting after the last one and clears the
+    * ranking board so to insert only scores within
+    * the current window
+    * @param currentTimeWindow TimeWindow
+    */
+  def updateState(currentTimeWindow: TimeWindow) = {
+
+    if(currentTimeWindow.getStart > lastTimeWindowStart){
+      lastTimeWindowStart = currentTimeWindow.getStart
       partialRankBoard.clear()
     }
   }
+
+  /**
+    * increments the ranking score associated
+    * with the key
+    * @param key
+    * @param score
+    */
+  def incrementScore(key: Long, score: Score) = {
+    partialRankBoard.incrementScoreBy(key, score)
+  }
+
 }
 
 
@@ -356,37 +397,13 @@ class CountAndTopK extends ProcessWindowFunction[(Long, Int), (Long, Int), Long,
   override def initializeState(context: FunctionInitializationContext): Unit = ???
 }
 
-class SumReduceFunction extends ReduceFunction[(Long, Int)]{
-  override def reduce(value1: (Long, Int), value2: (Long, Int)): (Long, Int) = {
-    if(value1._1 != value2._1){println("Different")}
-    (value1._1, value1._2 + value2._2)
+class SumReduceFunction extends ReduceFunction[(Long, Score)]{
+  override def reduce(value1: (Long, Score), value2: (Long, Score)): (Long, Score) = {
+    (value1._1, value1._2.add(value2._2))
   }
 }
 
-class WindAFunction extends ProcessAllWindowFunction[(Long, Int), RankingResult[Long], TimeWindow] {
 
-  var board : RankingBoard[Long] = _
-
-
-  override def process(context: Context, elements: Iterable[(Long, Int)], out: Collector[RankingResult[Long]]): Unit = {
-
-    val windowStart = new DateTime(context.window.getStart).toDateTime(DateTimeZone.UTC)
-    val windowEnd = new DateTime(context.window.getEnd).toDateTime(DateTimeZone.UTC)
-    //println("Window Start " + windowStart)
-    //println("Window End " + windowEnd)
-    if(board == null){
-      println("Initializing Ranking Board")
-      board = new RankingBoard[Long]()
-    }
-    board.clear()
-    elements.foreach( el => {
-      board.incrementScoreBy(el._1, el._2)
-      if(board.rankHasChanged()){
-        out.collect(new RankingResult[Long](windowStart.toString(), board.topK(), board.K))
-      }
-    })
-  }
-}
 
 
 
