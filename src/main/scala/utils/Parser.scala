@@ -225,12 +225,6 @@ object Parser {
     line.split(PIPE_DELIMITER).map(_.trim)
   }
 
-
-  def getHour(ts: AnyRef): Int = {
-    val date = Parser.convertToDateTime(ts.toString)
-    date.getHourOfDay
-  }
-
   def getMinUserID(r: GenericRecord): scala.Long =
     math.min(r.get("user_id1").toString.toLong, r.get("user_id2").toString.toLong)
 
