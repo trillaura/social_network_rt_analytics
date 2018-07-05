@@ -1,3 +1,5 @@
+package utils.ranking
+
 import utils.Parser
 
 import scala.collection.immutable.TreeMap

@@ -1,5 +1,5 @@
 import org.scalatest.FlatSpec
-import utils.ranking.SimpleScore
+import utils.ranking.{GenericRankingBoard, SimpleScore}
 
 class GenericRankingBoardTestSuite extends FlatSpec {
 
