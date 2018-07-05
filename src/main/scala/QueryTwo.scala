@@ -28,6 +28,8 @@ import scala.collection.mutable.ListBuffer
 import scala.collection.parallel.immutable
 import java.util.Properties
 
+import utils.ranking.{RankingBoard, RankingResult}
+
 
 /**
   * (120260221010,20)
@@ -77,7 +79,7 @@ object QueryTwo {
       .flatMap {  Parser.parseComment(_)  filter { _.isPostComment() } }
       .assignAscendingTimestamps( _.timestamp.getMillis )
       .map(postComment => (postComment.parentID, 1))
-      //.map(postComment => GenericRankElement[Long](id = postComment.parentID, score = SimpleScore(1)))
+      //.map(postComment => utils.ranking.GenericRankElement[Long](id = postComment.parentID, score = utils.ranking.SimpleScore(1)))
       //.keyBy(_.id)
       .keyBy(_._1)
       //.timeWindow(Time.hours(1))
@@ -241,7 +243,7 @@ class TopKProcessFunction(numK : Int) extends ProcessFunction[(Long, Int), Ranki
     if(rankingBoard.rankHasChanged()) {
       out.collect(new RankingResult[Long](new DateTime(currentWatermark).toDateTime(DateTimeZone.UTC).toString(), rankingBoard.topK(), rankingBoard.K))
     }
-    //println("Score of " + rankingBoard.scoreOf(120260221010L))
+    //println("utils.ranking.Score of " + rankingBoard.scoreOf(120260221010L))
 
 
     if(currentWatermark > lastWatermark){

@@ -1,3 +1,6 @@
+import utils.ranking.{GenericRankElement, Score}
+import utils.ranking
+
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
@@ -7,7 +10,7 @@ class GenericRankingBoard[A](k: Int) extends Serializable {
 
   var K = k
   private val map : mutable.HashMap[A, Score] = mutable.HashMap()
-  //private var topKList :ListBuffer[RankElement] = ListBuffer()
+  //private var topKList :ListBuffer[utils.ranking.RankElement] = ListBuffer()
 
   private object RankElementOrdering extends Ordering[GenericRankElement[A]] {
     override def compare(x: GenericRankElement[A], y: GenericRankElement[A]): Int = {
@@ -51,7 +54,7 @@ class GenericRankingBoard[A](k: Int) extends Serializable {
 
   def updateTop(key: A, value: Score): Unit = {
     if(listBuffer.isEmpty){
-      listBuffer += GenericRankElement(key,value)
+      listBuffer += ranking.GenericRankElement(key,value)
       rankChanged = true
       return
     }
@@ -68,7 +71,7 @@ class GenericRankingBoard[A](k: Int) extends Serializable {
 
     if(toRemove != null) {
       listBuffer -= toRemove
-      listBuffer += GenericRankElement(key,value)
+      listBuffer += ranking.GenericRankElement(key,value)
       rankChanged = true
     }
 
