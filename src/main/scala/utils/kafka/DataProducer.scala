@@ -1,12 +1,9 @@
 package utils.kafka
 
-import java.util.Properties
-
 import org.apache.avro.Schema
 import org.apache.avro.data.TimeConversions
 import org.apache.avro.generic.GenericData
 import org.apache.kafka.clients.producer._
-import org.apache.kafka.common.serialization.{ByteArraySerializer, LongSerializer}
 import utils.{Configuration, Parser}
 
 
@@ -16,22 +13,11 @@ class DataProducer(t: String, f: Int) extends Runnable {
 
   val producer_id: String = Configuration.PRODUCER_ID
   val topic: String = t
-  var producer: Producer[Long, Array[Byte]] = createProducer()
+  var producer: Producer[Long, Array[Byte]] = ProducerManager.getDefaultProducer
 
   val frequency: Int = f
 
   val parser: Schema.Parser = new Schema.Parser()
-
-  def createProducer(): Producer[Long, Array[Byte]] = {
-
-    val props: Properties  = new Properties()
-    props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, Configuration.BOOTSTRAP_SERVERS)
-    props.put(ProducerConfig.CLIENT_ID_CONFIG, Configuration.PRODUCER_ID)
-    props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, new LongSerializer().getClass.getName)
-    props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, new ByteArraySerializer().getClass.getName)
-
-    new KafkaProducer[Long, Array[Byte]](props)
-  }
 
   def produce(data: Array[Byte], topic: String, timestamp: Long) : Unit = {
 
