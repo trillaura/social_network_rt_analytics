@@ -38,14 +38,14 @@ object KafkaManager {
 
 //    val topicConfig = new Properties() // add per-topic configurations settings here
 
-    if (!topicExists(topic)) {
-
-      val newTopic = new NewTopic(topic, partitions, replication)
-      newTopic.configs(Map[String,String]().asJava)
-
-      admin.createTopics(List(newTopic).asJavaCollection)
-      //    ret.all().get() // Also fails
+    if (topicExists(topic)) {
+      admin.deleteTopics(List(topic).asJavaCollection)
     }
+    val newTopic = new NewTopic(topic, partitions, replication)
+    newTopic.configs(Map[String,String]().asJava)
+
+    admin.createTopics(List(newTopic).asJavaCollection)
+      //    ret.all().get() // Also fails
 //    admin.close()
   }
 
