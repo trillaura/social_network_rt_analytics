@@ -33,16 +33,16 @@ class SimpleSpout extends BaseRichSpout {
       _collector.emit(new Values(line))
     }
 
-//    while (true) {
-
-      val records =
-        consumer.poll(1000)
-
-    records.asScala.foreach(
-      record =>
-          _collector.emit(new Values(record), record.timestamp())
-    )
-//    }
+////    while (true) {
+//
+//      val records =
+//        consumer.poll(1000)
+//
+//    records.asScala.foreach(
+//      record =>
+//          _collector.emit(new Values(record), record.timestamp())
+//    )
+////    }
 
   }
 

@@ -7,6 +7,7 @@ import org.apache.storm.task.{OutputCollector, TopologyContext}
 import org.apache.storm.topology.OutputFieldsDeclarer
 import org.apache.storm.topology.base.BaseRichBolt
 import org.apache.storm.tuple.{Fields, Tuple, Values}
+import utils.Parser
 import utils.ranking.{RankElement, RankingResult}
 
 class GlobalRank extends BaseRichBolt {
@@ -17,7 +18,7 @@ class GlobalRank extends BaseRichBolt {
   var ranking: RankingResult[String] = _
 
   override def declareOutputFields(declarer: OutputFieldsDeclarer): Unit = {
-    declarer.declare(new Fields("globalRanking"))
+    declarer.declare(new Fields("timestamp", "globalRanking"))
   }
 
   override def prepare(stormConf: util.Map[_, _], context: TopologyContext, collector: OutputCollector): Unit = {
@@ -26,10 +27,11 @@ class GlobalRank extends BaseRichBolt {
   }
 
   override def execute(input: Tuple): Unit = {
-    val rankingJson = input.getStringByField("PartialRanking")
+    val partialRabking = input.getValueByField("partialRanking").asInstanceOf[List[RankElement[String]]]
+    val timestamp = input.getStringByField("timestamp")
 
-    val partialRanking: RankingResult[String] = gson.fromJson(rankingJson, classOf[RankingResult[String]])
-    val rankResult = new RankingResult[String](partialRanking.timestamp, partialRanking.rankElements, 10)
+    val date : String = Parser.convertToDateTime(timestamp.toLong).toString()
+    val rankResult = new RankingResult[String](date, partialRabking, 10)
 
     if (ranking == null) {
       ranking = rankResult
@@ -37,10 +39,9 @@ class GlobalRank extends BaseRichBolt {
       ranking = ranking.mergeRank(rankResult)
     }
 
-    var result: String = gson.toJson(rankResult)
-
     val value = new Values()
-    value.add(result)
+    value.add(date)
+    value.add(ranking.rankElements)
 
     _collector.emit(value)
     _collector.ack(input)

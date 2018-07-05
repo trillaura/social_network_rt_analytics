@@ -10,7 +10,7 @@ import org.apache.storm.topology.base.BaseRichBolt
 import org.apache.storm.tuple.Tuple
 import utils.Configuration
 import utils.kafka.{KafkaAvroParser, ProducerManager}
-import utils.ranking.RankingResult
+import utils.ranking.{RankElement, RankingResult}
 
 class CollectorBolt extends BaseRichBolt {
 
@@ -21,10 +21,9 @@ class CollectorBolt extends BaseRichBolt {
 
   override def execute(input: Tuple): Unit = {
 
-    val json = input.getStringByField("globalRanking")
-    val ranking = gson.fromJson(json, classOf[RankingResult[String]])
-    val start = ranking.timestamp
-    val rankElements = ranking.rankElements.toArray
+    val ranking = input.getValueByField("globalRanking").asInstanceOf[List[RankElement[String]]]
+    val start = input.getStringByField("timestamp")
+    val rankElements = ranking.toArray
 
     println(start + " " + rankElements.mkString(" "))
 

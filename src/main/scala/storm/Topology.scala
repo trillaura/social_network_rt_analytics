@@ -31,30 +31,31 @@ object Topology {
       .shuffleGrouping("parser")
 
     builder.setBolt("metronome", new Metronome)
-        .setNumTasks(1)
-        .shuffleGrouping("filter")
+      .setNumTasks(1)
+      .shuffleGrouping("filter")
 
-    builder.setBolt("hourlyCount", new WindowCountBolt().withSlidingWindow(Duration.minutes(60), Duration.minutes(5)))
-        .setNumTasks(3)
-        .fieldsGrouping("filter", new Fields("post_commented"))
-        .allGrouping("metronome")
+    builder.setBolt("hourlyCount", new WindowCountBolt().withSlidingWindow(
+      Bolt.Config.dailyCountWindowSize, 24 * 60 * 60 * 1000))
+      .setNumTasks(3)
+      .fieldsGrouping("filter", new Fields("post_commented"))
+      .allGrouping("metronome", "sMetronome")
 
     builder.setBolt("partialRank", new PartialRank)
-        .setNumTasks(3)
-        .fieldsGrouping("hourlyCount", new Fields("post_commented"))
+      .setNumTasks(3)
+      .fieldsGrouping("hourlyCount", new Fields("post_commented"))
 
     builder.setBolt("globalRank", new GlobalRank)
-        .setNumTasks(1)
-        .shuffleGrouping("partialRank")
+      .setNumTasks(1)
+      .shuffleGrouping("partialRank")
     /*
       Collect the output
      */
     builder.setBolt("printer", new CollectorBolt())
       .setNumTasks(1)
       .shuffleGrouping("globalRank")
-//      .shuffleGrouping("dailyGlobalRank")
-//      .shuffleGrouping("dailyGlobalRank")
-//      .shuffleGrouping("weeklyGlobalRank")
+    //      .shuffleGrouping("dailyGlobalRank")
+    //      .shuffleGrouping("dailyGlobalRank")
+    //      .shuffleGrouping("weeklyGlobalRank")
 
 
     /*
@@ -63,8 +64,8 @@ object Topology {
 
     val cluster = new LocalCluster
     cluster.submitTopology("query2", config, builder.createTopology)
-    Thread.sleep(3600 * 1000)
-    cluster.killTopology("query2")
+    //    Thread.sleep(3600 * 1000)
+    //    cluster.killTopology("query2")
 
 
     // cluster

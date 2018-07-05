@@ -22,19 +22,19 @@ class ParseLine extends BaseRichBolt {
 
   override def execute(input: Tuple): Unit = {
 
-    val record : GenericRecord =
-      KafkaAvroParser.fromByteArrayToCommentRecord(input.getValueByField("line").asInstanceOf[Array[Byte]])
-
-    val values = new Values()
-    values.add(record.get("ts"))
-    values.add(record.get("comment_id"))
-    values.add(record.get("user_id"))
-    values.add(record.get("comment"))
-    values.add(record.get("user"))
-    values.add(record.get("comment_replied"))
-    values.add(record.get("post_commented"))
-
-    _collector.emit(values)
+//    val record : GenericRecord =
+//      KafkaAvroParser.fromByteArrayToCommentRecord(input.getValueByField("line").asInstanceOf[Array[Byte]])
+//
+//    val values = new Values()
+//    values.add(record.get("ts"))
+//    values.add(record.get("comment_id"))
+//    values.add(record.get("user_id"))
+//    values.add(record.get("comment"))
+//    values.add(record.get("user"))
+//    values.add(record.get("comment_replied"))
+//    values.add(record.get("post_commented"))
+//
+//    _collector.emit(values)
 //    _collector.ack(input)
 
     val line: String = input.getStringByField("line")
