@@ -15,6 +15,7 @@ import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.apache.flink.util.Collector
 import org.apache.flink.streaming.api.scala._
 import org.joda.time.{DateTime, DateTimeZone}
+import utils.ranking.{RankingBoard, RankingResult}
 import utils.Parser
 
 object QueryThree {
@@ -124,7 +125,7 @@ object QueryThree {
           out.collect(output)
         }
       }
-      //println("Score of " + rankingBoard.scoreOf(120260221010L))
+      //println("utils.ranking.Score of " + rankingBoard.scoreOf(120260221010L))
 
 
       if(currentWatermark > lastWatermark){

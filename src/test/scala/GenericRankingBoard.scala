@@ -1,11 +1,12 @@
 import org.scalatest.FlatSpec
+import utils.ranking.SimpleScore
 
 class GenericRankingBoardTestSuite extends FlatSpec {
 
 
   val rankingBoard : GenericRankingBoard[Long] = new GenericRankingBoard[Long]
 
-  "The Generic RankingBoard" should "insert elements correctly" in {
+  "The Generic utils.ranking.RankingBoard" should "insert elements correctly" in {
 
     rankingBoard.clear()
 

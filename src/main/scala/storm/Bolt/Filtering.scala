@@ -13,7 +13,7 @@ class Filtering extends BaseRichBolt {
   var _collector: OutputCollector = _
 
   override def declareOutputFields(declarer: OutputFieldsDeclarer): Unit = {
-    declarer.declare(new Fields("ts", "post_commented"))
+    declarer.declare(new Fields("ts", "post_commented", "count"))
   }
 
   override def prepare(stormConf: util.Map[_, _], context: TopologyContext, collector: OutputCollector): Unit = _collector = collector
@@ -34,6 +34,7 @@ class Filtering extends BaseRichBolt {
     val values = new Values()
     values.add(timestamp.toString)
     values.add(postID)
+    values.add("1")
 
     _collector.emit(values)
     _collector.ack(input)

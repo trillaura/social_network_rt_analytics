@@ -41,7 +41,9 @@ object RedisManager {
         client => {
           records.asScala.foreach( record => {
             val r: GenericRecord =
-              KafkaAvroParser.fromByteArrayToResultRecord(record.value, topic)
+              KafkaAvroParser.fromByteArrayToRecord(record.value, topic)
+
+            println("Consumed record with schema " + r.getSchema.getName)
 
             client.zadd(r.getSchema.getName, System.currentTimeMillis(), r.toString)
           }
@@ -49,6 +51,29 @@ object RedisManager {
       }
     } catch {
       case _:Throwable => println("err")
+    }
+  }
+
+  def getResultsBySchema(name: String) : List[String] = {
+
+    val read = this.redisClient.zrange(name, 0, System.currentTimeMillis().toInt)
+
+    if (read.isDefined) {
+      val values = read.get
+      println("Records with key: " + name)
+      values.foreach(println(_))
+      return values
+    } else
+      println("No records with key: " + name)
+      List[String]()
+  }
+
+  def main(args: Array[String]): Unit = {
+    while (true) {
+      getResultsBySchema(KafkaAvroParser.schemaFriendshipResultsH24.getName)
+      getResultsBySchema(KafkaAvroParser.schemaFriendshipResultsD7.getName)
+      getResultsBySchema(KafkaAvroParser.schemaFriendshipResultsAllTime.getName)
+      Thread.sleep(10000)
     }
   }
 }

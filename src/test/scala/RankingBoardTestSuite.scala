@@ -1,10 +1,11 @@
 import org.scalatest.FlatSpec
+import utils.ranking.{GenericRankElement, RankingBoard, SimpleScore, UserScore}
 
 class RankingBoardTestSuite extends FlatSpec {
 
   val rankingBoard : RankingBoard[Long] = new RankingBoard[Long]
 
-  "The RankingBoard" should "insert elements corretly" in {
+  "The utils.ranking.RankingBoard" should "insert elements corretly" in {
 
     rankingBoard.clear()
 
@@ -116,7 +117,7 @@ class RankingBoardTestSuite extends FlatSpec {
 
   }
 
-  "The Generic Ranking Element " should " add Simple Score values correctly" in {
+  "The Generic Ranking Element " should " add Simple utils.ranking.Score values correctly" in {
 
     val score1 : SimpleScore = SimpleScore(1)
     val score2 : SimpleScore = SimpleScore(3)
@@ -140,7 +141,7 @@ class RankingBoardTestSuite extends FlatSpec {
     assert(score2.compare(score3) == 0)
   }
 
-  it should " add User Score values correctly" in {
+  it should " add User utils.ranking.Score values correctly" in {
     val score1 = UserScore(1,2,3)
     val score2 = UserScore(3,4,5)
 
@@ -159,7 +160,7 @@ class RankingBoardTestSuite extends FlatSpec {
 
   }
 
-  it should "compare User Score correctly" in {
+  it should "compare User utils.ranking.Score correctly" in {
     val score1 = UserScore(1,2,3) /* score 6 */
     val score2 = UserScore(3,4,5) /* score 12 */
     val score3 = UserScore(2,2,2) /* score 6 */

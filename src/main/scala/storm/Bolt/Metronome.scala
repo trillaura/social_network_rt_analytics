@@ -12,7 +12,7 @@ class Metronome extends BaseRichBolt {
   private var _collector: OutputCollector = _
   private var currentTime: Long = 0
 
-  private val S_METRONOME = "sMetronome"
+  val S_METRONOME = "sMetronome"
 
 
   override def declareOutputFields(declarer: OutputFieldsDeclarer): Unit = {

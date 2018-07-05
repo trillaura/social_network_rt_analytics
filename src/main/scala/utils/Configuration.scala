@@ -264,4 +264,85 @@ object Configuration {
     "  { \"name\":\"num_comments_10\", \"type\":\"long\" }" +
     "]}"
 
+  val POST_RESULT_SCHEMA_H1: String = "{" +
+    "\"type\":\"record\"," +
+    "\"name\":\"posts_statH1\"," +
+    "\"fields\":[" +
+    "  { \"name\":\"ts\", \"type\": \"long\" }," +
+    "  { \"name\":\"user_1\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_1\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_2\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_2\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_3\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_3\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_4\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_4\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_5\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_5\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_6\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_6\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_7\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_7\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_8\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_8\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_9\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_9\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_10\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_10\", \"type\":\"long\" }" +
+    "]}"
+
+  val POST_RESULT_SCHEMA_H24: String = "{" +
+    "\"type\":\"record\"," +
+    "\"name\":\"posts_statH24\"," +
+    "\"fields\":[" +
+    "  { \"name\":\"ts\", \"type\": \"long\" }," +
+    "  { \"name\":\"user_1\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_1\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_2\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_2\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_3\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_3\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_4\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_4\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_5\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_5\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_6\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_6\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_7\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_7\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_8\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_8\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_9\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_9\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_10\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_10\", \"type\":\"long\" }" +
+    "]}"
+
+  val POST_RESULT_SCHEMA_D7: String = "{" +
+    "\"type\":\"record\"," +
+    "\"name\":\"posts_statD7\"," +
+    "\"fields\":[" +
+    "  { \"name\":\"ts\", \"type\": \"long\" }," +
+    "  { \"name\":\"user_1\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_1\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_2\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_2\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_3\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_3\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_4\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_4\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_5\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_5\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_6\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_6\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_7\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_7\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_8\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_8\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_9\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_9\", \"type\":\"long\" }," +
+    "  { \"name\":\"user_10\", \"type\":\"long\" }," +
+    "  { \"name\":\"rating_10\", \"type\":\"long\" }" +
+    "]}"
+
 }

@@ -28,7 +28,7 @@ import scala.collection.mutable.ListBuffer
 import scala.collection.parallel.immutable
 import java.util.Properties
 
-import org.apache.flink.streaming.api.windowing.triggers.{Trigger, TriggerResult}
+import utils.ranking.{RankingBoard, RankingResult}
 
 
 /**
@@ -282,7 +282,7 @@ class TopKProcessFunction(numK : Int) extends ProcessFunction[(Long, Int), Ranki
     if(rankingBoard.rankHasChanged()) {
       out.collect(new RankingResult[Long](new DateTime(currentWatermark).toDateTime(DateTimeZone.UTC).toString(), rankingBoard.topK(), rankingBoard.K))
     }
-    //println("Score of " + rankingBoard.scoreOf(120260221010L))
+    //println("utils.ranking.Score of " + rankingBoard.scoreOf(120260221010L))
 
 
     if(currentWatermark > lastWatermark){

@@ -1,3 +1,5 @@
+package utils.ranking
+
 import org.joda.time.DateTime
 
 import scala.collection.mutable.ListBuffer

@@ -56,7 +56,7 @@ class SimpleSpout extends BaseRichSpout {
 
 
   def prepareConsumer() : Unit = {
-    consumer = ConsumerManager.getDefaultConsumer
-    ConsumerManager.subscribeToTopic(Configuration.COMMENTS_INPUT_TOPIC)
+    consumer = ConsumerManager.getDefaultConsumerStringByteArray
+    ConsumerManager.subscribeConsumerStringByteArrayToTopic(Configuration.COMMENTS_INPUT_TOPIC)
   }
 }
