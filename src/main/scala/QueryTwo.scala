@@ -80,15 +80,22 @@ object QueryTwo {
 
     val dailyResults = hourlyResults
       .assignAscendingTimestamps(res => Parser.millisFromStringDate(res.timestamp))
-      .windowAll(TumblingEventTimeWindows.of(Time.hours(24)))
+      .windowAll(TumblingEventTimeWindows.of(Time.hours(24) ))//, Time.hours(1)))
       .reduce(_ mergeRank _)
+      /*.keyBy(_.timestamp)
+      .window(SlidingEventTimeWindows.of(Time.hours(24), Time.hours(1)))
+      .reduce(new RankingResultsReducer, new PartialRankingMerger)
+      .setParallelism(2)
+      .process(new MergeRank) */
+
+
 
     dailyResults.writeAsText("results/q2-daily")
 
 
     val weeklyResults = dailyResults
       .assignAscendingTimestamps(res => Parser.millisFromStringDate(res.timestamp))
-      .windowAll(TumblingEventTimeWindows.of(Time.days(7)))
+      .windowAll(TumblingEventTimeWindows.of(Time.days(7)) )//, Time.days(1)))
       .reduce(_ mergeRank _)
 
     weeklyResults.writeAsText("results/q2-weekly")
@@ -101,6 +108,73 @@ object QueryTwo {
 
     val executingResults = env.execute()
     println("Query 2 Execution took " + executingResults.getNetRuntime(TimeUnit.SECONDS) + " seconds")
+  }
+}
+
+class PartialRankingMerger extends ProcessWindowFunction[GenericRankingResult[Long], GenericRankingResult[Long], String, TimeWindow]{
+
+  /* keeps the last time window start to compare it with new ones
+   * and know when to clear ranking for new window */
+  var lastTimeWindowStart : Long = 0
+
+  var currentRanking : GenericRankingResult[Long] = _
+  var lastSentRanking : GenericRankingResult[Long] = _
+
+
+  override def process(key: String,
+                       context: Context,
+                       elements: Iterable[GenericRankingResult[Long]],
+                       out: Collector[GenericRankingResult[Long]]): Unit = {
+    /* get current time window */
+    val currentTimeWindow = context.window
+
+    updateCurrentRanking(elements.iterator.next())
+
+    if(differentWindow(currentTimeWindow)){
+      if(lastSentRanking == null){
+        lastSentRanking = currentRanking
+      }
+      if(lastSentRanking != currentRanking){
+        out.collect(currentRanking)
+        lastSentRanking = currentRanking
+      }
+
+      currentRanking = null
+      lastTimeWindowStart = currentTimeWindow.getStart
+    }
+
+  }
+
+  /**
+    * checks whether we are in a new window
+    * @param currentTimeWindow
+    * @return
+    */
+  def differentWindow(currentTimeWindow: TimeWindow): Boolean = {
+    currentTimeWindow.getStart > lastTimeWindowStart
+  }
+
+  /**
+    * updates current window ranking by merging it
+    * with new one
+    * @param ranking newly arrived ranking
+    */
+  def updateCurrentRanking(ranking: GenericRankingResult[Long]) = {
+    if(currentRanking == null){
+      currentRanking = ranking
+    } else {
+      currentRanking = currentRanking mergeRank ranking
+    }
+  }
+
+}
+
+/**
+  * Reduces Rankings by merging them
+  */
+class RankingResultsReducer extends ReduceFunction[GenericRankingResult[Long]]{
+  override def reduce(value1: GenericRankingResult[Long], value2: GenericRankingResult[Long]): GenericRankingResult[Long] = {
+    value1 mergeRank value2
   }
 }
 
@@ -137,6 +211,10 @@ class MergeRank extends ProcessFunction[GenericRankingResult[Long], GenericRanki
    * incoming late partial rankings */
   private var lastTimestampLong = 0L
 
+  /* keeps last sent ranking to avoid outputting duplicates */
+  private var lastSentRanking : GenericRankingResult[Long] = new GenericRankingResult[Long]("", List(),10)
+
+
   override def processElement(value: GenericRankingResult[Long],
                               ctx: ProcessFunction[GenericRankingResult[Long], GenericRankingResult[Long]]#Context,
                               out: Collector[GenericRankingResult[Long]]): Unit = {
@@ -151,14 +229,21 @@ class MergeRank extends ProcessFunction[GenericRankingResult[Long], GenericRanki
       /* clear old partial rankings */
       globalRankingHolder.clearOldRankings(currentTimestamp = timestampMillis)
     } else {
-      /* output global rank computes using current partial ranking */
-      out.collect(globalRankingHolder.globalRanking(partialRanking = value))
+      val globalRanking = globalRankingHolder.globalRanking(partialRanking = value)
+      if(notPreviouslySent(globalRanking)){
+        /* output global rank computes using current partial ranking */
+        out.collect(globalRanking)
+        lastSentRanking = globalRanking
+      }
 
       /* update last seen timestamp with current */
       lastTimestampLong = timestampMillis
     }
 
   }
+
+  /* checks if ranking has already been sent */
+  def notPreviouslySent(globalRanking: GenericRankingResult[Long]): Boolean = globalRanking != lastSentRanking
 }
 
 

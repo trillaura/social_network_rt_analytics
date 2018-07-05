@@ -1,4 +1,6 @@
 import org.joda.time.DateTime
+import utils.Parser
+import utils.ranking.GenericRankElement
 
 import scala.collection.mutable.ListBuffer
 
@@ -10,18 +12,15 @@ class GenericRankingResult[A](time: String, elements : List[GenericRankElement[A
   def mergeRank(otherRankingResult : GenericRankingResult[A]) : GenericRankingResult[A] = {
     var finalTimestamp = ""
     var finalK = 0
-    val thisMillis = new DateTime(this.timestamp).getMillis
-    val thatMillis = new DateTime(otherRankingResult.timestamp).getMillis
+    val thisMillis = Parser.millisFromStringDate(this.timestamp)
+    val thatMillis = Parser.millisFromStringDate(otherRankingResult.timestamp)
     if(thisMillis != thatMillis) {
-      //println("WARNING! merging two rankings with different timestamps")
       if (thisMillis > thatMillis) {
-        //finalTimestamp = this.timestamp
         finalTimestamp = otherRankingResult.timestamp
       } else {
-        //finalTimestamp = otherRankingResult.timestamp
         finalTimestamp = this.timestamp
       }
-    }else {
+    } else {
       finalTimestamp = this.timestamp
     }
 

@@ -88,7 +88,8 @@ class WindowCountBolt extends BaseRichBolt {
           values.add(ts.toString)
           values.add(postID)
           values.add(count)
-          values.add(windowSlide)
+          // TODO remove comment
+          //values.add(windowSlide)
 
 
           _collector.emit(values)
@@ -137,7 +138,8 @@ class WindowCountBolt extends BaseRichBolt {
             values.add(ts.toString)
             values.add(postID)
             values.add(count)
-            values.add(windowSlide)
+            // TODO remove comment
+            //values.add(windowSlide)
 
             _collector.emit(values)
           }
