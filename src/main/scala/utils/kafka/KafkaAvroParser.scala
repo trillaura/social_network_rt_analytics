@@ -42,6 +42,18 @@ object KafkaAvroParser {
   val recordInjectionCommentsResultsD7: Injection[GenericRecord, Array[Byte]] =
     GenericAvroCodecs.toBinary(schemaCommentsResultsD7)
 
+  val schemaPostsResultsH1: Schema = parser.parse(Configuration.POSTS_OUTPUT_TOPIC_H1)
+  val recordInjectionPostsResultsH1: Injection[GenericRecord, Array[Byte]] =
+    GenericAvroCodecs.toBinary(schemaPostsResultsH1)
+
+  val schemaPostsResultsH24: Schema = parser.parse(Configuration.POSTS_OUTPUT_TOPIC_H24)
+  val recordInjectionPostsResultsH24: Injection[GenericRecord, Array[Byte]] =
+    GenericAvroCodecs.toBinary(schemaPostsResultsH24)
+
+  val schemaPostsResultsD7: Schema = parser.parse(Configuration.POSTS_OUTPUT_TOPIC_7D)
+  val recordInjectionPostsResultsD7: Injection[GenericRecord, Array[Byte]] =
+    GenericAvroCodecs.toBinary(schemaPostsResultsD7)
+
   val schemaComment: Schema = parser.parse(Configuration.COMMENT_SCHEMA)
   val recordInjectionComment: Injection[GenericRecord, Array[Byte]] =
     GenericAvroCodecs.toBinary(schemaComment)
@@ -52,17 +64,21 @@ object KafkaAvroParser {
 
 
   def getRecordInjectionByTopic(topic: String) : Injection[GenericRecord, Array[Byte]] = {
-  // TODO for all results schema
     if (topic.equals(Configuration.FRIENDS_OUTPUT_TOPIC_H24)) { recordInjectionFriendshipResultsH24 }
     else if (topic.equals(Configuration.FRIENDS_OUTPUT_TOPIC_D7)) { recordInjectionFriendshipResultsD7 }
     else if (topic.equals(Configuration.FRIENDS_OUTPUT_TOPIC_D7)) { recordInjectionFriendshipResultsAllTime }
     else if (topic.equals(Configuration.COMMENTS_OUTPUT_TOPIC_H1)) { recordInjectionCommentsResultsH1 }
     else if (topic.equals(Configuration.COMMENTS_OUTPUT_TOPIC_H24)) { recordInjectionCommentsResultsH24 }
     else if (topic.equals(Configuration.COMMENTS_OUTPUT_TOPIC_7D)) { recordInjectionCommentsResultsD7 }
-    else recordInjectionComment // to add posts results
+    else if (topic.equals(Configuration.POSTS_OUTPUT_TOPIC_H1)) { recordInjectionPostsResultsH1 }
+    else if (topic.equals(Configuration.POSTS_OUTPUT_TOPIC_H24)) { recordInjectionPostsResultsH24 }
+    else if (topic.equals(Configuration.POSTS_OUTPUT_TOPIC_7D)) { recordInjectionPostsResultsD7 }
+    else if (topic.equals(Configuration.FRIENDS_INPUT_TOPIC)) { recordInjectionFriendship }
+    else if (topic.equals(Configuration.COMMENTS_INPUT_TOPIC)) { recordInjectionComment }
+    else { recordInjectionPost } // if (topic.equals(Configuration.POSTS_INPUT_TOPIC))
   }
 
-  def fromByteArrayToResultRecord(record: Array[Byte], topic: String) : GenericRecord = {
+  def fromByteArrayToRecord(record: Array[Byte], topic: String) : GenericRecord = {
 
     val recordInjection = getRecordInjectionByTopic(topic)
     recordInjection.invert(record).get

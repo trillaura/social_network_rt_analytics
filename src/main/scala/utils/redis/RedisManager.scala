@@ -41,7 +41,7 @@ object RedisManager {
         client => {
           records.asScala.foreach( record => {
             val r: GenericRecord =
-              KafkaAvroParser.fromByteArrayToResultRecord(record.value, topic)
+              KafkaAvroParser.fromByteArrayToRecord(record.value, topic)
 
             client.zadd(r.getSchema.getName, System.currentTimeMillis(), r.toString)
           }
@@ -50,5 +50,19 @@ object RedisManager {
     } catch {
       case _:Throwable => println("err")
     }
+  }
+
+  def getResultsBySchema(name: String) : List[Option[String]] = {
+
+    val read = this.redisClient.mget(name)
+
+    if (read.isDefined) {
+      val values = read.get
+      println("Records with key: " + name)
+      values.foreach(println(_))
+      return values
+    } else
+      println("No records with key: " + name)
+      List[Option[String]]()
   }
 }
