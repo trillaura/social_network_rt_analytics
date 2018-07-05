@@ -6,7 +6,65 @@ import scala.collection.mutable.ListBuffer
 case class RankElement[A](id: A, score: Int) extends Ordered[RankElement[A]] with Serializable {
   override def compare(that: RankElement[A]): Int = {this.score.compareTo(that.score) } /* reverse ordering by multiplying by -1 */
   override def toString: String = s"(ID: $id, score: $score)"
+  def merge(that : RankElement[A]) :RankElement[A] = {
+    if(this.id != that.id){ println("Warning! Merging two RankElements with different IDs. Using first ID")}
+    RankElement[A](this.id, this.score + that.score)
+  }
 }
+
+
+
+case class GenericRankElement[A](id: A, score: Score) extends Ordered[GenericRankElement[A]] with Serializable {
+  override def compare(that: GenericRankElement[A]): Int = {this.score.compareTo(that.score) } /* reverse ordering by multiplying by -1 */
+  override def toString: String = s"(ID: $id, score: $score)"
+  def merge(that : GenericRankElement[A]) :GenericRankElement[A] = {
+    if(this.id != that.id){ println("Warning! Merging two RankElements with different IDs. Using first ID")}
+    GenericRankElement[A](this.id, this.score.add(that.score))
+  }
+}
+
+
+trait Score extends Ordered[Any] {
+  def add(other : Any) : Score
+  def score(): Int
+}
+
+case class SimpleScore( value : Int) extends Score {
+  override def add(other: Any): Score = {
+    if(!other.isInstanceOf[SimpleScore]){ println("Trying to add two scores with different types"); return this; }
+    val otherScore = other.asInstanceOf[SimpleScore]
+    SimpleScore(this.value + otherScore.value)
+  }
+
+  override def compare(that: Any): Int = {
+    if(!that.isInstanceOf[SimpleScore]){ println("Trying to add two scores with different types"); return 0; }
+    val otherScore = that.asInstanceOf[SimpleScore]
+    this.score().compareTo(otherScore.score())
+  }
+
+  override def toString: String = s"$value"
+
+  override def score(): Int = this.value
+}
+
+case class UserScore(a: Int, b : Int, c: Int) extends Score with Serializable{
+  override def add(other: Any): Score = {
+    if(!other.isInstanceOf[UserScore]){ println("Trying to add two scores with different types"); return this; }
+    val otherScore = other.asInstanceOf[UserScore]
+    UserScore(a + otherScore.a, b + otherScore.b, c + otherScore.c)
+  }
+
+  override def compare(that: Any): Int = {
+    if(!that.isInstanceOf[UserScore]){ println("Trying to add two scores with different types"); return 0; }
+    val thatScore = that.asInstanceOf[UserScore]
+    this.score().compareTo(thatScore.score())
+  }
+
+  override def toString: String = s"(a : $a, b : $b, c : $c )"
+
+  override def score(): Int = {a + b + c}
+}
+
 
 class RankingBoard[A](k: Int) extends Serializable {
   def this() = this(10)

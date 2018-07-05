@@ -1,6 +1,8 @@
 import java.lang
+import java.util.Properties
 import java.util.concurrent.TimeUnit
 
+import QueryOne.env
 import org.apache.flink.api.common.functions.{AggregateFunction, ReduceFunction}
 import org.apache.flink.api.common.state.{ListState, ListStateDescriptor, ValueState, ValueStateDescriptor}
 import org.apache.flink.api.common.typeinfo.{TypeHint, TypeInformation}
@@ -15,9 +17,11 @@ import org.apache.flink.streaming.api.scala.function.{ProcessAllWindowFunction, 
 import org.apache.flink.streaming.api.windowing.assigners.{SlidingEventTimeWindows, TumblingEventTimeWindows}
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer011
 import org.apache.flink.util.Collector
 import org.joda.time.{DateTime, DateTimeZone}
-import utils.Parser
+import utils.{Configuration, Parser}
+import utils.flink.{CommentsAvroDeserializationSchema, FriedshipAvroDeserializationSchema}
 
 import scala.collection.immutable.TreeMap
 import scala.collection.mutable
@@ -41,10 +45,18 @@ object QueryTwo {
 
   val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
   env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-  env.setParallelism(4)
+  env.setParallelism(1)
 
   val data: DataStream[String] = env.readTextFile("dataset/comments.dat")
-  env
+
+
+  val properties = new Properties()
+  properties.setProperty("bootstrap.servers", utils.Configuration.BOOTSTRAP_SERVERS)
+  properties.setProperty("zookeeper.connect", utils.Configuration.ZOOKEEPER_SERVERS)
+  properties.setProperty("group.id", utils.Configuration.CONSUMER_GROUP_ID)
+
+  private val stream = env
+    .addSource(new FlinkKafkaConsumer011(utils.Configuration.COMMENTS_INPUT_TOPIC, new CommentsAvroDeserializationSchema, properties))
 
   def executeWindowAll() : Unit = {
     val results = data
@@ -58,17 +70,20 @@ object QueryTwo {
 
   }
 
+
+
   def executeParallel() : Unit = {
     val hourlyResults = data
       .flatMap {  Parser.parseComment(_)  filter { _.isPostComment() } }
-      .assignAscendingTimestamps{comm =>
-        //println(comm.timestamp)
-        comm.timestamp.getMillis}
+      .assignAscendingTimestamps( _.timestamp.getMillis )
       .map(postComment => (postComment.parentID, 1))
+      //.map(postComment => GenericRankElement[Long](id = postComment.parentID, score = SimpleScore(1)))
+      //.keyBy(_.id)
       .keyBy(_._1)
       //.timeWindow(Time.hours(1))
       .window(TumblingEventTimeWindows.of(Time.hours(1)))
       .reduce( new SumReduceFunction , new PartialRankProcessWindowFunction)
+      .setParallelism(2)
       //.setParallelism(4)
       //.process(new TopKProcessFunction(10))
       //.setParallelism(2)
@@ -177,7 +192,7 @@ class PartialRankProcessWindowFunction extends ProcessWindowFunction[(Long, Int)
 
 
 
-        val timestamp = new DateTime(currentWatermark).toDateTime(DateTimeZone.UTC).toString()
+        val timestamp = new DateTime(currentWatermark).toString() //.toDateTime(DateTimeZone.UTC).toString()
         val output = new RankingResult[Long](timestamp, ranking, partialRankBoard.K)
         //println("Operator " + Thread.currentThread().getId + " output " +output)
         out.collect(output)
@@ -343,6 +358,7 @@ class CountAndTopK extends ProcessWindowFunction[(Long, Int), (Long, Int), Long,
 
 class SumReduceFunction extends ReduceFunction[(Long, Int)]{
   override def reduce(value1: (Long, Int), value2: (Long, Int)): (Long, Int) = {
+    if(value1._1 != value2._1){println("Different")}
     (value1._1, value1._2 + value2._2)
   }
 }

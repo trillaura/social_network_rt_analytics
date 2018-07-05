@@ -16,7 +16,7 @@ class RankingBoardTestSuite extends FlatSpec {
     rankingBoard.incrementScore(10)
 
     assert(rankingBoard.size() == 2)
-    assert(rankingBoard.scoreOf(1) == 3)
+    assert(rankingBoard.scoreOf(1) == 2)
     assert(rankingBoard.scoreOf(10) == 2)
 
     rankingBoard.printTopK()
@@ -114,6 +114,60 @@ class RankingBoardTestSuite extends FlatSpec {
     val mergedRankingBoard = firstRankingBoard.merge(secondRankingBoard)
     mergedRankingBoard.printTopK()
 
+  }
+
+  "The Generic Ranking Element " should " add Simple Score values correctly" in {
+
+    val score1 : SimpleScore = SimpleScore(1)
+    val score2 : SimpleScore = SimpleScore(3)
+
+    val rankElement1 = GenericRankElement[Long](10, score1)
+    val rankElement2 = GenericRankElement[Long](10, score2)
+    val finalRankElement = rankElement1.merge(rankElement2)
+    println(finalRankElement)
+
+    val simpleScore = finalRankElement.score.asInstanceOf[SimpleScore]
+    assert(simpleScore.value == 4)
+  }
+
+  it should "compare Simple score correctly" in {
+    val score1 : SimpleScore = SimpleScore(1)
+    val score2 : SimpleScore = SimpleScore(3)
+    val score3 : SimpleScore = SimpleScore(3)
+
+    assert(score1.compare(score2) < 0)
+    assert(score2.compare(score1) > 0)
+    assert(score2.compare(score3) == 0)
+  }
+
+  it should " add User Score values correctly" in {
+    val score1 = UserScore(1,2,3)
+    val score2 = UserScore(3,4,5)
+
+    println("User score comparison " + score1.compare(score2))
+
+    val rankElement1 = GenericRankElement[Long](10, score1)
+    val rankElement2 = GenericRankElement[Long](10, score2)
+    val finalRankElement = rankElement1.merge(rankElement2)
+    println(finalRankElement)
+
+    val userScore = finalRankElement.score.asInstanceOf[UserScore]
+    assert(userScore.a == 4)
+    assert(userScore.b == 6)
+    assert(userScore.c == 8)
+
+
+  }
+
+  it should "compare User Score correctly" in {
+    val score1 = UserScore(1,2,3) /* score 6 */
+    val score2 = UserScore(3,4,5) /* score 12 */
+    val score3 = UserScore(2,2,2) /* score 6 */
+
+    assert(score1.compare(score2) < 0)
+    assert(score2.compare(score1) > 0)
+    assert(score1.compare(score3) == 0)
+    assert(score3.compare(score1) == 0)
   }
 
 
