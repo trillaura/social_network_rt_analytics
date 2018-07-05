@@ -14,8 +14,17 @@ class AddAllWindowStart extends ProcessAllWindowFunction[Array[Int], (Long, Arra
   }
 }
 
-class AddWindowStart extends ProcessWindowFunction[Array[Int], (Long, Array[Int]), Tuple1[String], TimeWindow] {
-  override def process(key: Tuple1[String], context: Context, elements: Iterable[Array[Int]], out: Collector[(Long, Array[Int])]): Unit = {
+class AddWindowStartDaily extends ProcessWindowFunction[Array[Int], (String, Long, Array[Int]), String, TimeWindow] {
+
+  override def process(key: String, context: Context, elements: Iterable[Array[Int]], out: Collector[(String, Long, Array[Int])]): Unit = {
+    for (elem <- elements)
+      out.collect(key, context.window.getStart, elem)
+  }
+}
+
+class AddWindowStartWeekly extends ProcessWindowFunction[Array[Int], (Long, Array[Int]), String, TimeWindow] {
+
+  override def process(key: String, context: Context, elements: Iterable[Array[Int]], out: Collector[(Long, Array[Int])]): Unit = {
     for (elem <- elements)
       out.collect(context.window.getStart, elem)
   }

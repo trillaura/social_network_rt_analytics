@@ -2,7 +2,6 @@ import java.lang
 import java.util.Properties
 import java.util.concurrent.TimeUnit
 
-import QueryOne.env
 import org.apache.flink.api.common.functions.{AggregateFunction, ReduceFunction}
 import org.apache.flink.api.common.state.{ListState, ListStateDescriptor, ValueState, ValueStateDescriptor}
 import org.apache.flink.api.common.typeinfo.{TypeHint, TypeInformation}
@@ -27,6 +26,7 @@ import scala.collection.immutable.TreeMap
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.collection.parallel.immutable
+import java.util.Properties
 
 
 /**
