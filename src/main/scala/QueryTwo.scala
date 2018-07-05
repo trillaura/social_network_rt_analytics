@@ -28,7 +28,7 @@ import scala.collection.mutable.ListBuffer
 import scala.collection.parallel.immutable
 import java.util.Properties
 
-import utils.ranking.{RankingBoard, RankingResult}
+import utils.ranking.{RankingBoard, RankingResult, Score, SimpleScore}
 
 
 /**
