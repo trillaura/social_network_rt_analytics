@@ -42,15 +42,15 @@ object KafkaAvroParser {
   val recordInjectionCommentsResultsD7: Injection[GenericRecord, Array[Byte]] =
     GenericAvroCodecs.toBinary(schemaCommentsResultsD7)
 
-  val schemaPostsResultsH1: Schema = parser.parse(Configuration.POSTS_OUTPUT_TOPIC_H1)
+  val schemaPostsResultsH1: Schema = parser.parse(Configuration.POST_RESULT_SCHEMA_H1)
   val recordInjectionPostsResultsH1: Injection[GenericRecord, Array[Byte]] =
     GenericAvroCodecs.toBinary(schemaPostsResultsH1)
 
-  val schemaPostsResultsH24: Schema = parser.parse(Configuration.POSTS_OUTPUT_TOPIC_H24)
+  val schemaPostsResultsH24: Schema = parser.parse(Configuration.POST_RESULT_SCHEMA_H24)
   val recordInjectionPostsResultsH24: Injection[GenericRecord, Array[Byte]] =
     GenericAvroCodecs.toBinary(schemaPostsResultsH24)
 
-  val schemaPostsResultsD7: Schema = parser.parse(Configuration.POSTS_OUTPUT_TOPIC_7D)
+  val schemaPostsResultsD7: Schema = parser.parse(Configuration.POST_RESULT_SCHEMA_D7)
   val recordInjectionPostsResultsD7: Injection[GenericRecord, Array[Byte]] =
     GenericAvroCodecs.toBinary(schemaPostsResultsD7)
 
@@ -132,6 +132,37 @@ object KafkaAvroParser {
     avroRecord.put("user", user)
 
     recordInjectionPost.apply(avroRecord)
+  }
+
+  def fromFriendshipsResultsRecordToByteArray(ts: Long, counters: Array[scala.Long], schema: Schema): Array[Byte] = {
+
+
+    val avroRecord: GenericData.Record = new GenericData.Record(schema)
+
+    for (i <- counters.indices) {
+      if (ts == 0l || counters.length == 25) {
+        if (i == 0)
+          avroRecord.put("ts", counters(0))
+        else if (i <= 10)
+          avroRecord.put("count_h0" + (i-1).toString, counters(i))
+        else
+          avroRecord.put("count_h" + (i-1).toString, counters(i))
+      } else {
+        avroRecord.put("ts", ts)
+        if (i < 10)
+          avroRecord.put("count_h0" + i.toString, counters(i))
+        else
+          avroRecord.put("count_h" + i.toString, counters(i))
+      }
+    }
+
+    if (schema.equals(schemaFriendshipResultsH24)) {
+      recordInjectionFriendshipResultsH24.apply(avroRecord)
+    } else if (schema.equals(schemaFriendshipResultsD7)) {
+      recordInjectionFriendshipResultsD7.apply(avroRecord)
+    } else {
+      recordInjectionFriendshipResultsAllTime.apply(avroRecord)
+    }
   }
 
   def fromCommentsResultsRecordToByteArray(ts: Long,

@@ -53,9 +53,9 @@ object Query1 {
 
     props.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG, classOf[EventTimestampExtractor])
 
-    props.put("log.cleanup.policy", "compact")
-    props.put("log.cleaner.min.compaction.lag.ms", "60000")
-    props.put("log.retention.check.interval.ms", "1000")
+//    props.put("log.cleanup.policy", "compact")
+//    props.put("log.cleaner.min.compaction.lag.ms", "60000")
+//    props.put("log.retention.check.interval.ms", "1000")
 
     // Records should be flushed every 10 seconds.
     props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, "10000")
@@ -129,16 +129,16 @@ object Query1 {
           SerializerAny.serialize(newVal)
         }
       )
-        .toStream
+      .toStream
 
-        resultsH24.foreach(
-          (x, y) => {
-            val value = SerializerAny.deserialize(y).asInstanceOf[Array[Long]]
-            printf("init --> %s --> ", new DateTime(x, DateTimeZone.UTC).toString(Parser.TIMESTAMP_FORMAT))
-            value.foreach( d => printf("%d - ",d))
-            printf("\n")
-          }
-        )
+      resultsH24.foreach(
+        (x, y) => {
+          val value = SerializerAny.deserialize(y).asInstanceOf[Array[Long]]
+          printf("init --> %s --> ", new DateTime(x, DateTimeZone.UTC).toString(Parser.TIMESTAMP_FORMAT))
+          value.foreach( d => printf("%d - ",d))
+          printf("\n")
+        }
+      )
 
     val resultsD7 = resultsH24
       .groupByKey(Serialized.`with`(longSerde, Serdes.ByteArray))
@@ -152,7 +152,7 @@ object Query1 {
         }
       )
       .toStream
-      .selectKey((windowed_k, v) => windowed_k.window().start)
+      .selectKey((windowed_k, _) => windowed_k.window().start)
 
     resultsD7
       .foreach(
@@ -201,9 +201,32 @@ object Query1 {
 //    )
 
     //         Write the `KTable<String, Long>` to the output topic.
-    resultsH24.to(Configuration.FRIENDS_OUTPUT_TOPIC_H24)(Produced.`with`(longSerde, Serdes.ByteArray()))
-    resultsD7.to(Configuration.FRIENDS_OUTPUT_TOPIC_D7)(Produced.`with`(longSerde, Serdes.ByteArray()))
-    resultsAllTime.to(Configuration.FRIENDS_OUTPUT_TOPIC_ALLTIME)(Produced.`with`(Serdes.String, Serdes.ByteArray()))
+    resultsH24
+      .map(
+        (timestamp, array) => {
+          val values = SerializerAny.deserialize(array).asInstanceOf[Array[scala.Long]]
+          (timestamp, KafkaAvroParser.fromFriendshipsResultsRecordToByteArray(timestamp, values, KafkaAvroParser.schemaFriendshipResultsH24))
+        }
+      )
+      .to(Configuration.FRIENDS_OUTPUT_TOPIC_H24)(Produced.`with`(longSerde, Serdes.ByteArray()))
+
+    resultsD7
+      .map(
+        (timestamp, array) => {
+          val values = SerializerAny.deserialize(array).asInstanceOf[Array[scala.Long]]
+          (timestamp, KafkaAvroParser.fromFriendshipsResultsRecordToByteArray(timestamp, values, KafkaAvroParser.schemaFriendshipResultsD7))
+        }
+      )
+      .to(Configuration.FRIENDS_OUTPUT_TOPIC_D7)(Produced.`with`(longSerde, Serdes.ByteArray()))
+
+    resultsAllTime
+      .map(
+        (state, array) => {
+          val values = SerializerAny.deserialize(array).asInstanceOf[Array[scala.Long]]
+          (state, KafkaAvroParser.fromFriendshipsResultsRecordToByteArray(0l, values, KafkaAvroParser.schemaFriendshipResultsAllTime))
+        }
+      )
+      .to(Configuration.FRIENDS_OUTPUT_TOPIC_ALLTIME)(Produced.`with`(Serdes.String, Serdes.ByteArray()))
 
     // Now that we have finished the definition of the processing topology we can actually run
     // it via `start()`.  The Streams application as a whole can be launched just like any
