@@ -10,13 +10,12 @@ import utils.Configuration
 
 import scala.collection.JavaConverters._
 
+/**
+  * Object to get default propertie
+  */
+class ConsumerManager {
 
-object ConsumerManager {
-
-  lazy val consumerStringByteArray: Consumer[String, Array[Byte]] = createConsumerStringByteArray()
-  lazy val consumerLongByteArray: Consumer[Long, Array[Byte]] = createConsumerLongByteArray()
-
-  def getCommonProperties : Properties = {
+  private def getCommonProperties : Properties = {
     val props: Properties = new Properties()
     props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
       Configuration.BOOTSTRAP_SERVERS)
@@ -27,7 +26,7 @@ object ConsumerManager {
     props
   }
 
-  def createConsumerStringByteArray(): Consumer[String, Array[Byte]] = {
+  private def createConsumerStringByteArray(): Consumer[String, Array[Byte]] = {
 
     val props = getCommonProperties
 
@@ -39,7 +38,7 @@ object ConsumerManager {
     new KafkaConsumer[String, Array[Byte]](props)
   }
 
-  def createConsumerLongByteArray(): Consumer[Long, Array[Byte]] = {
+  private def createConsumerLongByteArray(): Consumer[Long, Array[Byte]] = {
 
     val props = getCommonProperties
 
@@ -51,9 +50,9 @@ object ConsumerManager {
     new KafkaConsumer[Long, Array[Byte]](props)
   }
 
-  def listConsumerStringByteArrayTopics(): Unit = {
+  private def listConsumerStringByteArrayTopics(consumer: Consumer[String, Array[Byte]]): Unit = {
 
-    val topics: util.Map[String, util.List[PartitionInfo]] = consumerStringByteArray.listTopics()
+    val topics: util.Map[String, util.List[PartitionInfo]] = consumer.listTopics()
     for (topicName <- topics.keySet().toArray()) {
 
       if (!topicName.toString.startsWith("__")) {
@@ -67,9 +66,9 @@ object ConsumerManager {
     }
   }
 
-  def listConsumerLongByteArrayTopics(): Unit = {
+  private def listConsumerLongByteArrayTopics(consumer: Consumer[Long, Array[Byte]]): Unit = {
 
-    val topics: util.Map[String, util.List[PartitionInfo]] = consumerLongByteArray.listTopics()
+    val topics: util.Map[String, util.List[PartitionInfo]] = consumer.listTopics()
     for (topicName <- topics.keySet().toArray()) {
 
       if (!topicName.toString.startsWith("__")) {
@@ -84,17 +83,25 @@ object ConsumerManager {
   }
 
   // To consume data, we first need to subscribe to the topics of interest
-  def subscribeConsumerStringByteArrayToTopic(topic: String): Unit =
-    consumerStringByteArray.subscribe(List(topic).asJava)
+  private def subscribeConsumerStringByteArrayToTopic(consumer: Consumer[String, Array[Byte]], topic: String): Unit =
+    consumer.subscribe(List(topic).asJava)
 
-  def subscribeConsumerLongByteArrayToTopic(topic: String): Unit =
-    consumerLongByteArray.subscribe(List(topic).asJava)
+  private def subscribeConsumerLongByteArrayToTopic(consumer: Consumer[Long, Array[Byte]], topic: String): Unit =
+    consumer.subscribe(List(topic).asJava)
 
-  def getDefaultConsumerStringByteArray : Consumer[String, Array[Byte]] =
-    this.consumerStringByteArray
+  def createInputConsumer(topic: String) : Consumer[String, Array[Byte]] = {
 
-  def getDefaultConsumerLongByteArray : Consumer[Long, Array[Byte]] =
-    this.consumerLongByteArray
+    val consumer = createConsumerStringByteArray()
+    subscribeConsumerStringByteArrayToTopic(consumer, topic)
+    listConsumerStringByteArrayTopics(consumer)
+    consumer
+  }
 
+  def createOutputConsumer(topic: String) : Consumer[Long, Array[Byte]] = {
+    val consumer = createConsumerLongByteArray()
+    subscribeConsumerLongByteArrayToTopic(consumer, topic)
+    listConsumerLongByteArrayTopics(consumer)
+    consumer
+  }
 }
 

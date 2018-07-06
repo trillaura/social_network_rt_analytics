@@ -13,28 +13,13 @@ import org.joda.time.{DateTime, DateTimeZone}
 import utils.kafka.KafkaAvroParser
 import utils.{Configuration, Parser, SerializerAny}
 
-
+/**
+  * QUERY 1
+  */
 object Query1 {
 
   private val longSerde = Serdes.Long.asInstanceOf[Serde[scala.Long]]
   private val intSerde = Serdes.Integer.asInstanceOf[Serde[Int]]
-
-  val DEBUG = false
-    /*
- * 1) Create the input and output topics used by this example.
- * $ bin/kafka-topics.sh --create --topic wordcount-input --zookeeper zookeeper:2181 --partitions 1 --replication-factor 1
- * $ bin/kafka-topics.sh  --create --topic streams-wordcount-output --zookeeper zookeeper:2181 --partitions 1 --replication-factor 1
- *
- * 2) Start this  application
- *
- * 3) Write some input data to the source topic "streams-plaintext-input"
- *      e.g.:
- * $ bin/kafka-console-producer --broker-list localhost:9092 --topic wordcount-input
- *
- * 4) Inspect the resulting data in the output topic "streams-wordcount-output"
- *      e.g.:
-   * $ bin/kafka-console-consumer.sh --topic test --from-beginning --new-consumer --bootstrap-server kafka0:9092 --property print.key=true --property value.deserializer=org.apache.kafka.common.serialization.ByteArrayDeserializer
- */
 
   def createAvroStreamProperties(): Properties = {
     val props: Properties = new Properties()
@@ -48,14 +33,9 @@ object Query1 {
       Serdes.Long.getClass.getName)
     props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG,
       Serdes.ByteArray.getClass.getName)
-
-//    props.put(StreamsConfig.METRICS_RECORDING_LEVEL_CONFIG, "DEBUG")
-
+  // to collect all metrics
+    props.put(StreamsConfig.METRICS_RECORDING_LEVEL_CONFIG, "DEBUG")
     props.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG, classOf[EventTimestampExtractor])
-
-//    props.put("log.cleanup.policy", "compact")
-//    props.put("log.cleaner.min.compaction.lag.ms", "60000")
-//    props.put("log.retention.check.interval.ms", "1000")
 
     // Records should be flushed every 10 seconds.
     props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, "10000")
@@ -94,7 +74,7 @@ object Query1 {
         .groupByKey(Serialized.`with`(Serdes.String, longSerde))
         .reduce(
           (timestamp, _) => {
-            if (DEBUG) { println("Ignoring double friendships! "+ timestamp) }
+            if (Configuration.DEBUG) { println("Ignoring double friendships! "+ timestamp) }
             timestamp
           }
         )
@@ -131,15 +111,6 @@ object Query1 {
       )
       .toStream
 
-      resultsH24.foreach(
-        (x, y) => {
-          val value = SerializerAny.deserialize(y).asInstanceOf[Array[Long]]
-          printf("init --> %s --> ", new DateTime(x, DateTimeZone.UTC).toString(Parser.TIMESTAMP_FORMAT))
-          value.foreach( d => printf("%d - ",d))
-          printf("\n")
-        }
-      )
-
     val resultsD7 = resultsH24
       .groupByKey(Serialized.`with`(longSerde, Serdes.ByteArray))
       .windowedBy(TimeWindows.of(TimeUnit.DAYS.toMillis(7)).advanceBy(TimeUnit.HOURS.toMillis(24)))
@@ -153,16 +124,6 @@ object Query1 {
       )
       .toStream
       .selectKey((windowed_k, _) => windowed_k.window().start)
-
-    resultsD7
-      .foreach(
-        (x, y) => {
-          val value = SerializerAny.deserialize(y).asInstanceOf[Array[Long]]
-          printf("initD7 --> %s --> ", new DateTime(x, DateTimeZone.UTC).toString(Parser.TIMESTAMP_FORMAT))
-          value.foreach( d => printf("%d - ",d))
-          printf("\n")
-        }
-      )
 
     val resultsAllTime = resultsH24
       .map(
@@ -182,23 +143,40 @@ object Query1 {
         () => new FromBeginningCounterTransformer(100), Configuration.STATE_STORE_NAME
       )
 
-    resultsAllTime
-      .foreach(
+
+    if (Configuration.DEBUG) {
+      resultsH24.foreach(
         (x, y) => {
           val value = SerializerAny.deserialize(y).asInstanceOf[Array[Long]]
-          printf("initALLTIME --> %s --> ", new DateTime(value(0), DateTimeZone.UTC).toString(Parser.TIMESTAMP_FORMAT))
-          value.foreach( d => printf("%d - ",d))
+          printf("init --> %s --> ", new DateTime(x, DateTimeZone.UTC).toString(Parser.TIMESTAMP_FORMAT))
+          value.foreach(d => printf("%d - ", d))
           printf("\n")
         }
       )
 
-//    if (DEBUG) { resultsH24.toStream.print(Printed.toSysOut[scala.Long, Array[Byte]]) }
-//    if (DEBUG) { resultsD7.print(Printed.toSysOut[scala.Long, Array[Byte]]) }
-//    if (DEBUG) { resultsAllTime.print(Printed.toSysOut[String, Array[Byte]]) }
+      resultsD7.foreach(
+        (x, y) => {
+          val value = SerializerAny.deserialize(y).asInstanceOf[Array[Long]]
+          printf("initD7 --> %s --> ", new DateTime(x, DateTimeZone.UTC).toString(Parser.TIMESTAMP_FORMAT))
+          value.foreach(d => printf("%d - ", d))
+          printf("\n")
+        }
+      )
 
-//    resultsH24.process(
-//      () => new FileWriterProcessor(100)
-//    )
+      resultsAllTime.foreach(
+        (x, y) => {
+          val value = SerializerAny.deserialize(y).asInstanceOf[Array[Long]]
+          printf("initALLTIME --> %s --> ", new DateTime(value(0), DateTimeZone.UTC).toString(Parser.TIMESTAMP_FORMAT))
+          value.foreach(d => printf("%d - ", d))
+          printf("\n")
+        }
+      )
+    }
+
+    if (Configuration.DEBUG) { resultsH24.print(Printed.toSysOut[scala.Long, Array[Byte]]) }
+    if (Configuration.DEBUG) { resultsD7.print(Printed.toSysOut[scala.Long, Array[Byte]]) }
+    if (Configuration.DEBUG) { resultsAllTime.print(Printed.toSysOut[String, Array[Byte]]) }
+
 
     //         Write the `KTable<String, Long>` to the output topic.
     resultsH24
@@ -223,6 +201,7 @@ object Query1 {
       .map(
         (state, array) => {
           val values = SerializerAny.deserialize(array).asInstanceOf[Array[scala.Long]]
+          println("aaa")
           (state, KafkaAvroParser.fromFriendshipsResultsRecordToByteArray(0l, values, KafkaAvroParser.schemaFriendshipResultsAllTime))
         }
       )
@@ -234,7 +213,7 @@ object Query1 {
     val topology: Topology = builder.build()
 
 
-    if (DEBUG) { println(topology.describe)}
+    if (Configuration.DEBUG) { println(topology.describe)}
 
     val streams: KafkaStreams = new KafkaStreams(topology, props)
     val latch: CountDownLatch = new CountDownLatch(1)

@@ -10,6 +10,10 @@ import org.apache.storm.tuple.{Fields, Tuple, Values}
 import utils.Parser
 import utils.ranking.{RankElement, RankingResult}
 
+/**
+  * It aggregates partial ranking from the previous bolt in order to output a single global ranking.
+  * It emit data to the final bolt in charge of collect result.
+  */
 class GlobalRank extends BaseRichBolt {
 
   var gson: Gson = _
@@ -30,13 +34,14 @@ class GlobalRank extends BaseRichBolt {
     val partialRanking = input.getValueByField("partialRanking").asInstanceOf[List[RankElement[String]]]
     val timestamp = input.getStringByField("timestamp")
 
+    // Convert unix timestamp in dateTime
     val date: String = Parser.convertToDateTime(timestamp.toLong).toString()
     val rankResult = new RankingResult[String](date, partialRanking, 10)
 
     if (ranking == null || ranking.timestamp < rankResult.timestamp) {
       ranking = rankResult
     } else {
-      ranking = ranking.mergeRank(rankResult)
+      ranking = ranking.mergeRank(rankResult) // merge partial ranks
     }
 
     val value = new Values()

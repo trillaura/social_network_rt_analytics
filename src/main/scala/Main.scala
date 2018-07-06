@@ -2,6 +2,9 @@ import kafka_streams.Query1
 import storm.Topology
 import utils.Configuration
 
+/**
+  * Main for all subsystems.
+  */
 object Main {
 
   def main(args: Array[String]) : Unit = {

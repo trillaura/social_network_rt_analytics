@@ -2,6 +2,10 @@
 import utils.Configuration
 import utils.kafka.RedisResultsConsumer
 
+/**
+  * Lancher for consumer processes to read results published on the output topics of Kafka
+  * and than send them to Redis storage.
+  */
 object RedisConsumerLauncher {
 
   def  launch(): Unit = {
