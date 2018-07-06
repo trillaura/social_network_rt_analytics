@@ -30,7 +30,7 @@ object Topology {
       .setNumTasks(3)
       .shuffleGrouping("parser")
 
-    builder.setBolt("metronome", new Metronome)
+    builder.setBolt("metronome", Metronome)
       .setNumTasks(1)
       .shuffleGrouping("filter")
 
@@ -39,9 +39,9 @@ object Topology {
      */
 
     builder.setBolt("hourlyCount", new WindowCountBolt().withSlidingWindow(
-      Bolt.Config.hourlyCountWindowSize, 30 * 60 * 1000))
+      Bolt.Config.hourlyCountWindowSize, Bolt.Config.hourlyCountWindowSlide))
       .setNumTasks(1)
-      .allGrouping("metronome", "sMetronome")
+      .allGrouping("metronome", Metronome.S_METRONOME_HOURLY)
       .fieldsGrouping("filter", new Fields("post_commented"))
 
     builder.setBolt("hourlyPartialRank", new PartialRank)
@@ -57,9 +57,9 @@ object Topology {
      */
 
     builder.setBolt("dailyCount", new WindowCountBolt().withSlidingWindow(
-      Bolt.Config.dailyCountWindowSize, 60 * 60 * 1000))
+      Bolt.Config.dailyCountWindowSize, Bolt.Config.dailyCountWindowSlide))
       .setNumTasks(13)
-      .allGrouping("metronome", "sMetronome")
+      .allGrouping("metronome", Metronome.S_METRONOME_DAiLY)
       .fieldsGrouping("hourlyCount", new Fields("post_commented"))
 
     builder.setBolt("dailyPartialRank", new PartialRank)
@@ -75,9 +75,9 @@ object Topology {
      */
 
     builder.setBolt("weeklyCount", new WindowCountBolt().withSlidingWindow(
-      Bolt.Config.weeklyCountWindowSize, 24 * 60 * 60 * 1000))
+      Bolt.Config.weeklyCountWindowSize, Bolt.Config.weeklyCountWindowSlide))
       .setNumTasks(13)
-      .allGrouping("metronome", "sMetronome")
+      .allGrouping("metronome", Metronome.S_METRONOME_WEEKLY)
       .fieldsGrouping("dailyCount", new Fields("post_commented"))
 
     builder.setBolt("weeklyPartialRank", new PartialRank)
@@ -95,9 +95,9 @@ object Topology {
      */
     builder.setBolt("printer", new CollectorBolt())
       .setNumTasks(1)
-      .shuffleGrouping("hourlyGlobalRank")
-    //      .shuffleGrouping("dailyGlobalRank")
-    //      .shuffleGrouping("weeklyGlobalRank")
+//      .shuffleGrouping("hourlyGlobalRank")
+//      .shuffleGrouping("dailyGlobalRank")
+//      .shuffleGrouping("weeklyGlobalRank")
 
 
     /*

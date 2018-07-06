@@ -10,4 +10,7 @@ object Config {
   val dailyCountWindowSize: Long = 24 * hourlyCountWindowSize
   val weeklyCountWindowSize: Long = 7 * dailyCountWindowSize
 
+  val hourlyCountWindowSlide: Long = 60 * 60 * 1000
+  val dailyCountWindowSlide: Long = 24 * hourlyCountWindowSlide
+  val weeklyCountWindowSlide: Long = 7 * dailyCountWindowSize
 }
