@@ -7,6 +7,9 @@ import storm.Bolt._
 import storm.Spout.SimpleSpout
 
 
+/**
+  * This class defines the storm topology for the Query Two.
+  */
 object Topology {
 
   def main(args: Array[String]): Unit = {

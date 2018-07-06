@@ -8,6 +8,10 @@ import org.apache.storm.topology.base.BaseRichBolt
 import org.apache.storm.tuple.{Fields, Tuple, Values}
 import utils.Parser
 
+/**
+  * It performs a filtering based on the record field. It forward just the records that refer to a comment of a post.
+  * It discards comments of comments.
+  */
 class Filtering extends BaseRichBolt {
   var _collector: OutputCollector = _
 
