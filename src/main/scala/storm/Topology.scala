@@ -96,8 +96,8 @@ object Topology {
     builder.setBolt("printer", new CollectorBolt())
       .setNumTasks(1)
       .shuffleGrouping("hourlyGlobalRank")
-      .shuffleGrouping("dailyGlobalRank")
-      .shuffleGrouping("weeklyGlobalRank")
+//      .shuffleGrouping("dailyGlobalRank")
+//      .shuffleGrouping("weeklyGlobalRank")
 
 
     /*

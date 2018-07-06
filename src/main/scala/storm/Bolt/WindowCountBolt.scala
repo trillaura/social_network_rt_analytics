@@ -116,46 +116,46 @@ class WindowCountBolt extends BaseRichBolt {
     val ts: Long = tuple.getStringByField("ts").toLong
     val id: String = tuple.getStringByField("post_commented")
     val count: Int = tuple.getStringByField("count").toInt
-    //
-    //    val windowSlide: Long = windowConfiguration(Config.TOPOLOGY_BOLTS_SLIDING_INTERVAL_DURATION_MS) // slide interval in ms
-    //    //    val currentTime: Long = roundToCompletedMinute(ts)
-    //
-    //    val elapsed: Long = ts - windowStart // elapsed time from last frame in ms
-    //    val frameToSlide = (elapsed / windowSlide).toInt // forward window of fromToSlide nslot
-    //
-    //    if (frameToSlide > 0) {
-    //      windowStart += (frameToSlide * windowSlide)
-    //
-    //      val expired = new util.ArrayList[String]()
-    //
-    //      for (postID: String <- windowPerPost.keySet().asScala) {
-    //        val w: Window = windowPerPost.get(postID)
-    //
-    //        w.moveForward(frameToSlide)
-    //
-    //        if (postID != id) {
-    //          val estimateTotal = w.estimateTotal()
-    //          if (w.estimateTotal() == 0) {
-    //            expired.add(postID)
-    //          }
-    //          val values: Values = new Values()
-    //          values.add(ts.toString)
-    //          values.add(postID)
-    //          values.add(w.estimateTotal().toString)
-    //          values.add(windowStart.toString)
-    //
-    //          _collector.emit(values)
-    //        }
-    //      }
-    //
-    //      // Free memory
-    //      val iterator = expired.iterator()
-    //      while (iterator.hasNext) {
-    //        val elem = iterator.next()
-    //        windowPerPost.remove(elem)
-    //      }
-    //
-    //    }
+
+    val windowSlide: Long = windowConfiguration(Config.TOPOLOGY_BOLTS_SLIDING_INTERVAL_DURATION_MS) // slide interval in ms
+    //    val currentTime: Long = roundToCompletedMinute(ts)
+
+    val elapsed: Long = ts - windowStart // elapsed time from last frame in ms
+    val frameToSlide = (elapsed / windowSlide).toInt // forward window of fromToSlide nslot
+
+    if (frameToSlide > 0) {
+      windowStart += (frameToSlide * windowSlide)
+
+      val expired = new util.ArrayList[String]()
+
+      for (postID: String <- windowPerPost.keySet().asScala) {
+        val w: Window = windowPerPost.get(postID)
+
+        w.moveForward(frameToSlide)
+
+        if (postID != id) {
+          val estimateTotal = w.estimateTotal()
+          if (w.estimateTotal() == 0) {
+            expired.add(postID)
+          }
+          val values: Values = new Values()
+          values.add(ts.toString)
+          values.add(postID)
+          values.add(w.estimateTotal().toString)
+          values.add(windowStart.toString)
+
+          _collector.emit(values)
+        }
+      }
+
+      // Free memory
+      val iterator = expired.iterator()
+      while (iterator.hasNext) {
+        val elem = iterator.next()
+        windowPerPost.remove(elem)
+      }
+
+    }
 
     var w: Window = windowPerPost.get(id)
     if (w == null) {
