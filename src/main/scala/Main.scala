@@ -82,7 +82,62 @@ object Main {
       Configuration.ZOOKEEPER_SERVERS = zookeeper0 + "," + zookeeper1 + "," + zookeeper2
 
       ProducerLauncher.launch()
+    } else if (args.length == 2) {
+
+      val framework = args(1)
+
+      if (args(1).toLowerCase.equals("kafka")) {        // kafka subsystem
+
+        val broker0 = args(2)
+        val broker1 = args(3)
+        val broker2 = args(4)
+        val zookeeper0 = args(5)
+        val zookeeper1 = args(6)
+        val zookeeper2 = args(7)
+
+        Configuration.BOOTSTRAP_SERVERS = broker0 + "," + broker1 + "," + broker2
+        Configuration.ZOOKEEPER_SERVERS = zookeeper0 + "," + zookeeper1 + "," + zookeeper2
+
+        Query1.execute()
+
+      } else if (args(1).toLowerCase.equals("flink")) { // flink subsystem
+
+        val broker0 = args(2)
+        val broker1 = args(3)
+        val broker2 = args(4)
+        val zookeeper0 = args(5)
+        val zookeeper1 = args(6)
+        val zookeeper2 = args(7)
+
+        Configuration.BOOTSTRAP_SERVERS = broker0 + "," + broker1 + "," + broker2
+        Configuration.ZOOKEEPER_SERVERS = zookeeper0 + "," + zookeeper1 + "," + zookeeper2
+
+        QueryOne.main(new Array[String](1))
+        QueryTwo.main(new Array[String](1))
+        QueryThree.main(new Array[String](1))
+
+      } else if (args(1).toLowerCase.equals("storm")) { //storm subsystem
+
+        val broker0 = args(2)
+        val broker1 = args(3)
+        val broker2 = args(4)
+        val zookeeper0 = args(5)
+        val zookeeper1 = args(6)
+        val zookeeper2 = args(7)
+
+        Configuration.BOOTSTRAP_SERVERS = broker0 + "," + broker1 + "," + broker2
+        Configuration.ZOOKEEPER_SERVERS = zookeeper0 + "," + zookeeper1 + "," + zookeeper2
+
+        Topology.main(new Array[String](1))
+
+      } else {
+        println("\tUsage <subsystem[kafka/storm/flink]>") // default
+        println("\tUsage <subsystem[kafka/storm/flink]> <broker0> <broker1> <broker2> <zookeeper0> <zookeeper1> <zookeeper2>") // Queries
+        println("\tUsage <broker0> <broker1> <broker2> <zookeeper0> <zookeeper1> <zookeeper2>") // ProducerLauncher
+        println("\tUsage <broker0> <broker1> <broker2> <zookeeper0> <zookeeper1> <zookeeper2> <redis-server>") // RedisConsumerLauncher o RedisManager
+      }
     } else {
+      println("\tUsage <subsystem[kafka/storm/flink]>") // default
       println("\tUsage <subsystem[kafka/storm/flink]> <broker0> <broker1> <broker2> <zookeeper0> <zookeeper1> <zookeeper2>") // Queries
       println("\tUsage <broker0> <broker1> <broker2> <zookeeper0> <zookeeper1> <zookeeper2>") // ProducerLauncher
       println("\tUsage <broker0> <broker1> <broker2> <zookeeper0> <zookeeper1> <zookeeper2> <redis-server>") // RedisConsumerLauncher o RedisManager
