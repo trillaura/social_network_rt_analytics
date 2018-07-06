@@ -3,7 +3,6 @@ package storm.Spout
 import java.util
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.consumer.Consumer
 import org.apache.storm.spout.SpoutOutputCollector
 import org.apache.storm.task.TopologyContext
@@ -11,16 +10,16 @@ import org.apache.storm.topology.OutputFieldsDeclarer
 import org.apache.storm.topology.base.BaseRichSpout
 import org.apache.storm.tuple.{Fields, Values}
 import utils.Configuration
-import utils.kafka.{ConsumerManager, KafkaAvroParser}
+import utils.kafka.ConsumerManager
 
 import scala.collection.JavaConverters._
-import scala.io.Source
 
+/**
+  * The Spout read from a Apache Kafka topic record in Avro format and forward them into the system
+  */
 class SimpleSpout extends BaseRichSpout {
 
   var _collector: SpoutOutputCollector = _
-  var filename = "dataset/comments.dat"
-
   var consumer: Consumer[String, Array[Byte]] = _
 
   override def open(conf: util.Map[_, _], context: TopologyContext, collector: SpoutOutputCollector): Unit = {
@@ -30,11 +29,6 @@ class SimpleSpout extends BaseRichSpout {
   }
 
   override def nextTuple(): Unit = {
-
-    //        for (line <- Source.fromFile(filename).getLines()) {
-    //          _collector.emit(new Values(line))
-    //        }
-
 
     // read from kafka
     val records =

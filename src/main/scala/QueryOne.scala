@@ -7,11 +7,14 @@ import org.apache.flink.streaming.api.scala.extensions._
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer011, FlinkKafkaProducer011}
-import org.joda.time.{DateTime, DateTimeZone}
+import org.joda.time.DateTime
 import utils._
 import utils.flink._
-import utils.kafka.KafkaAvroParser
 
+/**
+  * Social network friendship analysis
+  * The main function is executeWithSlidingWindowParallel.
+  */
 object QueryOne {
 
   val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
@@ -84,7 +87,7 @@ object QueryOne {
         .process(new CountWithState)
 
     /*
-        Adding sink: Write on Kafka topic
+        Adding sinks to Write on Kafka topic
      */
 
     dailyCount.addSink(
@@ -112,6 +115,7 @@ object QueryOne {
   /**
     * Query one implementation using tumbling window.
     * Weekly statistics with parallel operator.
+    *
     * @param ds : DataStream
     */
   def executeWithTumblingWindowParallel(ds: DataStream[(String, String, String)]): Unit = {
@@ -133,18 +137,12 @@ object QueryOne {
       .aggregate(new CountDaily, new AddWindowStartDaily)
       .setParallelism(4)
 
-
     val dailyCount = dailyCountIndividual
       // Remove user'id field
       .mapWith(tuple => (tuple._2, tuple._3))
       // Compute total count per hourly slot aggregating all counts
       .keyBy(r => r._1)
       .reduce((v1, v2) => (v1._1, v1._2.zip(v2._2).map { case (x, y) => x + y }))
-
-    dailyCount.mapWith(res => {
-      val startWindow = new DateTime(res._1)
-      println("daily - " + startWindow.toString(), res._2.mkString(" "))
-    })
 
     val weeklyCountIndividual =
       dailyCountIndividual
@@ -157,23 +155,41 @@ object QueryOne {
       .keyBy(windowStart => windowStart._1)
       .reduce((v1, v2) => (v1._1, v1._2.zip(v2._2).map { case (x, y) => x + y }))
 
-    weeklyCount.mapWith(res => {
-      val startWindow = new DateTime(res._1)
-      println("weekly - " + startWindow.toString(), res._2.mkString(" "))
-    })
-
     val global =
       weeklyCountIndividual
         .countWindowAll(1)
         .process(new CountWithState)
-        .mapWith(res => {
-          val startWindow = new DateTime(res._1)
-          println("global - " + startWindow.toString(), res._2.mkString(" "))
-        })
+
+    /*
+       Adding sinks to Write on Kafka topic
+    */
+
+    dailyCount.addSink(
+      new FlinkKafkaProducer011(
+        Configuration.BOOTSTRAP_SERVERS,
+        Configuration.FRIENDS_OUTPUT_TOPIC_H24,
+        new ResultAvroSerializationSchema(Configuration.FRIENDS_OUTPUT_TOPIC_H24))
+    )
+
+    weeklyCount.addSink(
+      new FlinkKafkaProducer011(
+        Configuration.BOOTSTRAP_SERVERS,
+        Configuration.FRIENDS_OUTPUT_TOPIC_D7,
+        new ResultAvroSerializationSchema(Configuration.FRIENDS_OUTPUT_TOPIC_D7))
+    )
+
+    global.addSink(
+      new FlinkKafkaProducer011(
+        Configuration.BOOTSTRAP_SERVERS,
+        Configuration.FRIENDS_OUTPUT_TOPIC_ALLTIME,
+        new ResultAvroSerializationSchema(Configuration.FRIENDS_OUTPUT_TOPIC_ALLTIME))
+    )
 
   }
 
   /**
+    * Query one implementation using tumbling window and no parallelism.
+    * The advantage is that it does not produce intermediate result caused by reduce operators
     *
     * @param ds : DataStream
     */
@@ -200,12 +216,6 @@ object QueryOne {
       .timeWindowAll(Time.hours(24))
       .aggregate(new CountAggregation, new AddAllWindowStart)
 
-    // Output
-    dailyCnt.map(array => {
-      val startWindow = new DateTime(array._1, DateTimeZone.UTC)
-      println("daily - " + startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), array._2.mkString(" "))
-    })
-
     /*
       Aggregate hourly count for week
      */
@@ -221,12 +231,6 @@ object QueryOne {
         new AddAllWindowStart
       )
 
-    //Output
-    weeklyCnts.map(array => {
-      val startWindow = new DateTime(array._1, DateTimeZone.UTC)
-      println("weekly - " + startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), array._2.mkString(" "))
-    })
-
     /*
       Perform count from the start of the social network.
       We are WORKING WITH STATE.
@@ -235,10 +239,30 @@ object QueryOne {
       .timeWindowAll(Time.days(7))
       .process(new CountProcessWithState())
 
-    totCnts.map(array => {
-      val startWindow = new DateTime(array._1, DateTimeZone.UTC)
-      println("global - " + startWindow.toString("dd-MM-yyyy HH:mm:ssZ"), array._2.mkString(" "))
-    })
+    /*
+   Adding sinks to Write on Kafka topic
+*/
+
+    dailyCnt.addSink(
+      new FlinkKafkaProducer011(
+        Configuration.BOOTSTRAP_SERVERS,
+        Configuration.FRIENDS_OUTPUT_TOPIC_H24,
+        new ResultAvroSerializationSchema(Configuration.FRIENDS_OUTPUT_TOPIC_H24))
+    )
+
+    weeklyCnts.addSink(
+      new FlinkKafkaProducer011(
+        Configuration.BOOTSTRAP_SERVERS,
+        Configuration.FRIENDS_OUTPUT_TOPIC_D7,
+        new ResultAvroSerializationSchema(Configuration.FRIENDS_OUTPUT_TOPIC_D7))
+    )
+
+    totCnts.addSink(
+      new FlinkKafkaProducer011(
+        Configuration.BOOTSTRAP_SERVERS,
+        Configuration.FRIENDS_OUTPUT_TOPIC_ALLTIME,
+        new ResultAvroSerializationSchema(Configuration.FRIENDS_OUTPUT_TOPIC_ALLTIME))
+    )
 
   }
 
