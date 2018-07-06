@@ -1,0 +1,87 @@
+version: '3'
+
+services:
+    storm-nimbus:
+        image: storm:latest
+        container_name: nimbus
+        command: storm nimbus
+        depends_on:
+            - zookeeper
+        links:
+            - zookeeper
+        restart: always
+        ports:
+            - "6627:6627"
+            - "8000:8000"
+
+    storm-cli:
+        image: matnar/storm-cli
+        container_name: storm-cli
+        depends_on:
+            - zookeeper
+            - storm-nimbus
+        links:
+            - zookeeper
+            - storm-nimbus
+        entrypoint: /bin/bash
+        stdin_open: true
+        tty: true
+        volumes:
+            - ./data:/data
+
+    zookeeper:
+        image: zookeeper
+        container_name: zookeeper
+        restart: always
+        ports:
+             - "2181:2181"
+
+    storm-ui:
+        image: storm:latest
+        container_name: storm-ui
+        command: storm ui
+            - storm-nimbus
+        depends_on:
+            - zookeeper
+        links:
+            - storm-nimbus
+            - zookeeper
+        restart: always
+        ports:
+            - "8080:8080"
+
+    worker1:
+        image: storm:latest
+        command: storm supervisor
+        container_name: worker1
+        depends_on:
+            - storm-nimbus
+            - zookeeper
+        links:
+            - storm-nimbus
+            - zookeeper
+        restart: always
+
+    worker2:
+        image: storm:latest
+        command: storm supervisor
+        container_name: worker2
+        depends_on:
+            - storm-nimbus
+            - zookeeper
+        links:
+            - storm-nimbus
+            - zookeeper
+        restart: always
+
+    worker3:
+        image: storm:latest
+        command: storm supervisor
+        container_name: worker3
+        depends_on:
+            - storm-nimbus
+            - zookeeper
+        links:
+            - storm-nimbus
+            - zookeeper
+        restart: always
