@@ -29,7 +29,7 @@ object QueryOne {
     .addSource(new FlinkKafkaConsumer011(Configuration.FRIENDS_INPUT_TOPIC, new FriedshipAvroDeserializationSchema, properties))
 
   /**
-    * Query One implementation through flink window function.
+    * Query One implementation through window function.
     * The filtering step removes duplicates caused by bidirectional friendships.
     * Daily statistics are computed with tumbling window. Sliding window are involved to compute
     * weekly and global statistics
@@ -40,43 +40,31 @@ object QueryOne {
 
     val filtered = ds
       .mapWith(str => {
-        // Put first the biggest user's id
-        if (str._2.toLong > str._3.toLong) (str._1, str._2, str._3)
-        else (str._1, str._3, str._2)
+        if (str._2.toLong > str._3.toLong) (str._1, str._2, str._3) else (str._1, str._3, str._2)
       })
       .keyBy(conn => (conn._2, conn._3))
-      // filtering
       .flatMap(new FilterFunction)
 
-    // Compute statistics for each user to make it parallel
     val dailyCountIndividual = filtered
-      // Map into (timestamp, user1_id)
-      .mapWith(tuple => (new DateTime(tuple._1).getMillis, tuple._2))
-      // assign event timestamp
+      .mapWith(tuple => (new DateTime(tuple._1).getMillis, tuple._2)) // :(timestamp, user1_id)
       .assignAscendingTimestamps(tuple => tuple._1)
-      // key bu user1_id
-      .keyBy(tuple => tuple._2)
+      .keyBy(tuple => tuple._2) // key bu user1_id
       .window(TumblingEventTimeWindows.of(Time.hours(24)))
-      // (timestamp, user1_id) => ( user1_id, window_start, count per hourly slot)
-      .aggregate(new CountDaily, new AddWindowStartDaily)
+      .aggregate(new CountDaily, new AddWindowStartDaily) // :(user1_id, window_start, count per hourly slot)
+
       .setParallelism(4)
 
     val dailyCount = dailyCountIndividual
-      // Map into (start, [count00, count01 ,...])
-      .mapWith(tuple => (tuple._2, tuple._3))
+      .mapWith(tuple => (tuple._2, tuple._3)) // :(start, [count00, count01 ,...])
       .keyBy(r => r._1)
-      // Aggregating the arrays of counters
       .reduce((v1, v2) => (v1._1, v1._2.zip(v2._2).map { case (x, y) => x + y }))
 
-    // Weekly counts is performed as sum of the daily counts
     val weeklyCount =
       dailyCountIndividual
-        // Compute statistics for each user'id
         .keyBy(userId => userId._1)
         .timeWindow(Time.days(7), Time.hours(24))
         .aggregate(new CountWeekly, new AddWindowStartWeekly)
         .setParallelism(4)
-        // Aggregating weekly counters
         .keyBy(windowStart => windowStart._1)
         .reduce((v1, v2) => (v1._1, v1._2.zip(v2._2).map { case (x, y) => x + y }))
 
@@ -87,7 +75,7 @@ object QueryOne {
         .process(new CountWithState)
 
     /*
-        Adding sinks to Write on Kafka topic
+     *  SING TO WRITE ON KAFKA
      */
 
     dailyCount.addSink(
@@ -112,6 +100,11 @@ object QueryOne {
     )
   }
 
+  // ============================ //
+  //  ALTERNATIVE IMPLEMENTATION  //
+  // ============================ //
+
+
   /**
     * Query one implementation using tumbling window.
     * Weekly statistics with parallel operator.
@@ -128,41 +121,40 @@ object QueryOne {
       .keyBy(conn => (conn._2, conn._3))
       .flatMap(new FilterFunction)
 
+    // statistics for daily keyed window
     val dailyCountIndividual = filtered
       .mapWith(tuple => (new DateTime(tuple._1).getMillis, tuple._2))
       .assignAscendingTimestamps(tuple => tuple._1)
       .keyBy(tuple => tuple._2)
-      .window(TumblingEventTimeWindows.of(Time.hours(24)))
-      // (timestamp, user1_id) => ( user1_id, window_start, count per hourly slot)
+      .window(TumblingEventTimeWindows.of(Time.hours(24))) // :( user1_id, window_start, count per hourly slot)
       .aggregate(new CountDaily, new AddWindowStartDaily)
       .setParallelism(4)
 
+    // aggregate daily statistics
     val dailyCount = dailyCountIndividual
-      // Remove user'id field
       .mapWith(tuple => (tuple._2, tuple._3))
-      // Compute total count per hourly slot aggregating all counts
       .keyBy(r => r._1)
       .reduce((v1, v2) => (v1._1, v1._2.zip(v2._2).map { case (x, y) => x + y }))
 
-    val weeklyCountIndividual =
-      dailyCountIndividual
-        // (user1_id, daily count start, counters)
-        .keyBy(userId => userId._1)
-        .timeWindow(Time.days(7))
-        .aggregate(new CountWeekly, new AddWindowStartWeekly)
+    // statistics for weekly keyed window
+    val weeklyCountIndividual = dailyCountIndividual
+      .keyBy(userId => userId._1)
+      .timeWindow(Time.days(7))
+      .aggregate(new CountWeekly, new AddWindowStartWeekly)
 
+    // aggregate weekly statistics
     val weeklyCount = weeklyCountIndividual
       .keyBy(windowStart => windowStart._1)
       .reduce((v1, v2) => (v1._1, v1._2.zip(v2._2).map { case (x, y) => x + y }))
 
-    val global =
-      weeklyCountIndividual
-        .countWindowAll(1)
-        .process(new CountWithState)
+    // statistics from the social network start
+    val global = weeklyCountIndividual
+      .countWindowAll(1)
+      .process(new CountWithState)
 
     /*
-       Adding sinks to Write on Kafka topic
-    */
+     *  SING TO WRITE ON KAFKA
+     */
 
     dailyCount.addSink(
       new FlinkKafkaProducer011(
@@ -198,7 +190,6 @@ object QueryOne {
     // Remove bidirectional friendships
     val filtered = ds
       .mapWith(str => {
-        // Put first the biggest user's id
         if (str._2.toLong > str._3.toLong) (str._1, str._2, str._3)
         else (str._1, str._3, str._2)
       })
@@ -206,19 +197,12 @@ object QueryOne {
       .flatMap(new FilterFunction)
 
 
-    /*
-      Aggregate hourly count for day
-      This stage receives 24 tuple for day from the previous one
-    */
     val dailyCnt = filtered
       .map(tuple => Parser.convertToDateTime(tuple._1).getMillis)
       .assignAscendingTimestamps(ts => ts)
       .timeWindowAll(Time.hours(24))
       .aggregate(new CountAggregation, new AddAllWindowStart)
 
-    /*
-      Aggregate hourly count for week
-     */
     val weeklyCnts = dailyCnt
       .mapWith(tuple => tuple._2)
       .timeWindowAll(Time.days(7))
@@ -228,20 +212,16 @@ object QueryOne {
             value1.zip(value2).map { case (x, y) => x + y }
           }
         },
-        new AddAllWindowStart
-      )
+        new AddAllWindowStart)
 
-    /*
-      Perform count from the start of the social network.
-      We are WORKING WITH STATE.
-     */
     val totCnts = weeklyCnts
       .timeWindowAll(Time.days(7))
       .process(new CountProcessWithState())
 
+
     /*
-   Adding sinks to Write on Kafka topic
-*/
+     *  SING TO WRITE ON KAFKA
+     */
 
     dailyCnt.addSink(
       new FlinkKafkaProducer011(
