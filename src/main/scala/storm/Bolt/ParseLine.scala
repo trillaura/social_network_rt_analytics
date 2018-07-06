@@ -22,8 +22,7 @@ class ParseLine extends BaseRichBolt {
 
   override def execute(input: Tuple): Unit = {
 
-    // convert Avro record
-    val record: GenericRecord =
+    val record : GenericRecord =
       KafkaAvroParser.fromByteArrayToCommentRecord(input.getValueByField("line").asInstanceOf[Array[Byte]])
 
     val values = new Values()
@@ -37,30 +36,5 @@ class ParseLine extends BaseRichBolt {
 
     _collector.emit(values)
     _collector.ack(input)
-
-
-    //    val line: String = input.getStringByField("line")
-    //
-    //    val str: Array[String] = line.split("\\|")
-    //
-    //    val value = new Values()
-    //    value.add(str(0)) // timestamp
-    //    value.add(str(1)) // comment id
-    //    value.add(str(2)) // user id
-    //    value.add(str(3)) // comment
-    //    value.add(str(4)) // user
-    //
-    //    // If split function returns 6 fields the post_commented is empty
-    //    // and this is a comment of comment
-    //    if (str.length == 6) {
-    //      value.add(str(5)) // comment_replied
-    //      value.add("") // post_commented
-    //    } else {
-    //      value.add("")
-    //      value.add(str(6))
-    //    }
-
-    //    _collector.emit(value)
-    //    _collector.ack(input)
   }
 }

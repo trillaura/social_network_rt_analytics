@@ -13,27 +13,13 @@ import org.joda.time.{DateTime, DateTimeZone}
 import utils.kafka.KafkaAvroParser
 import utils.{Configuration, Parser, SerializerAny}
 
-
+/**
+  * QUERY 1
+  */
 object Query1 {
 
   private val longSerde = Serdes.Long.asInstanceOf[Serde[scala.Long]]
   private val intSerde = Serdes.Integer.asInstanceOf[Serde[Int]]
-
-    /*
- * 1) Create the input and output topics used by this example.
- * $ bin/kafka-topics.sh --create --topic wordcount-input --zookeeper zookeeper:2181 --partitions 1 --replication-factor 1
- * $ bin/kafka-topics.sh  --create --topic streams-wordcount-output --zookeeper zookeeper:2181 --partitions 1 --replication-factor 1
- *
- * 2) Start this  application
- *
- * 3) Write some input data to the source topic "streams-plaintext-input"
- *      e.g.:
- * $ bin/kafka-console-producer --broker-list localhost:9092 --topic wordcount-input
- *
- * 4) Inspect the resulting data in the output topic "streams-wordcount-output"
- *      e.g.:
-   * $ bin/kafka-console-consumer.sh --topic test --from-beginning --new-consumer --bootstrap-server kafka0:9092 --property print.key=true --property value.deserializer=org.apache.kafka.common.serialization.ByteArrayDeserializer
- */
 
   def createAvroStreamProperties(): Properties = {
     val props: Properties = new Properties()
@@ -47,14 +33,9 @@ object Query1 {
       Serdes.Long.getClass.getName)
     props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG,
       Serdes.ByteArray.getClass.getName)
-
-//    props.put(StreamsConfig.METRICS_RECORDING_LEVEL_CONFIG, "DEBUG")
-
+  // to collect all metrics
+    props.put(StreamsConfig.METRICS_RECORDING_LEVEL_CONFIG, "DEBUG")
     props.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG, classOf[EventTimestampExtractor])
-
-//    props.put("log.cleanup.policy", "compact")
-//    props.put("log.cleaner.min.compaction.lag.ms", "60000")
-//    props.put("log.retention.check.interval.ms", "1000")
 
     // Records should be flushed every 10 seconds.
     props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, "10000")
