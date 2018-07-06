@@ -15,7 +15,7 @@ object Topology {
   def main(args: Array[String]): Unit = {
 
     val config = new Config
-    config.setNumWorkers(4)
+    config.setNumWorkers(3)
     config.setMessageTimeoutSecs(5)
 
     val builder: TopologyBuilder = new TopologyBuilder
@@ -95,23 +95,28 @@ object Topology {
      */
     builder.setBolt("printer", new CollectorBolt())
       .setNumTasks(1)
-//      .shuffleGrouping("hourlyGlobalRank")
-//      .shuffleGrouping("dailyGlobalRank")
-//      .shuffleGrouping("weeklyGlobalRank")
+      .shuffleGrouping("hourlyGlobalRank")
+      .shuffleGrouping("dailyGlobalRank")
+      .shuffleGrouping("weeklyGlobalRank")
 
 
     /*
       Create topology and submit it
      */
 
-    val cluster = new LocalCluster
-    cluster.submitTopology("query2", config, builder.createTopology)
-    //    Thread.sleep(3600 * 1000)
-    //    cluster.killTopology("query2")
+    if (args.length == 2) {
 
+      if (args(1) == "local") {
+        val cluster = new LocalCluster
+        cluster.submitTopology("query2", config, builder.createTopology)
+      } else if (args(1) == "cluster")
+        StormSubmitter.submitTopology(args(0), config, builder.createTopology())
 
-    // cluster
-    //        StormSubmitter.submitTopology(args(0), conf, stormTopology)
+    } else {
+      val cluster = new LocalCluster
+      cluster.submitTopology("query2", config, builder.createTopology)
+    }
+
 
   }
 
