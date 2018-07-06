@@ -6,7 +6,6 @@ import org.apache.storm.task.{OutputCollector, TopologyContext}
 import org.apache.storm.topology.OutputFieldsDeclarer
 import org.apache.storm.topology.base.BaseRichBolt
 import org.apache.storm.tuple.{Fields, Tuple, Values}
-import org.joda.time.DateTime
 import utils.Parser
 
 class Filtering extends BaseRichBolt {
