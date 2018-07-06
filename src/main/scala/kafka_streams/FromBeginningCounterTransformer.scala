@@ -5,6 +5,14 @@ import org.apache.kafka.streams.processor.ProcessorContext
 import org.apache.kafka.streams.state.KeyValueStore
 import utils.{Configuration, SerializerAny}
 
+/**
+  * Transformer operator to change a input stream to an output one,
+  * keeping saved a state store for statistics from beginning of processing
+  * time and the timestamp of start statistics computation updated at each
+  * incoming tuple.
+  *
+  * @param punctuateTime time for next operation schedule
+  */
 class FromBeginningCounterTransformer(punctuateTime: Long) extends Transformer[String, Array[Byte], (String, Array[Byte])] {
 
   private var stateFromBeginning: KeyValueStore[String, Array[Byte]] = _
@@ -24,7 +32,6 @@ class FromBeginningCounterTransformer(punctuateTime: Long) extends Transformer[S
     if (state != null) {
       current_state = SerializerAny.deserialize(state).asInstanceOf[Array[Long]]
     }
-//    var init_timestamp = current_state(0)
 
     val incoming_value = SerializerAny.deserialize(value).asInstanceOf[Array[Long]]
     if (minimumTimestamp == Long.MaxValue || minimumTimestamp > incoming_value(0)) { minimumTimestamp = incoming_value(0) }
@@ -34,7 +41,6 @@ class FromBeginningCounterTransformer(punctuateTime: Long) extends Transformer[S
     state_updated(0) = minimumTimestamp
 
     val new_value = SerializerAny.serialize(state_updated)
-//    stateFromBeginning.put(key, new_value)
     stateFromBeginning.put(Configuration.STATE_STORE_NAME, new_value)
 
     (Configuration.STATE_STORE_NAME, new_value)

@@ -33,7 +33,7 @@ object Query1 {
       Serdes.Long.getClass.getName)
     props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG,
       Serdes.ByteArray.getClass.getName)
-  // to collect all metrics
+    // to collect all metrics
     props.put(StreamsConfig.METRICS_RECORDING_LEVEL_CONFIG, "DEBUG")
     props.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG, classOf[EventTimestampExtractor])
 
@@ -61,6 +61,7 @@ object Query1 {
       builder
         .stream[Long, Array[Byte]](Configuration.FRIENDS_INPUT_TOPIC)(Consumed.`with`(longSerde, Serdes.ByteArray))
 
+    // Filtering friendships referring to the same couple of users
     val records_filtered: KStreamS[String, Long] =
       records_original
         .map(
@@ -80,6 +81,7 @@ object Query1 {
         )
         .toStream
 
+    // Compute daily statistics using Tumbling Window of 24 hour to group values to count
     val resultsH24 = records_filtered
       .map(
         (_, timestamp) => {
@@ -111,6 +113,8 @@ object Query1 {
       )
       .toStream
 
+    // Compute weekly statistics from the daily one grouping through a Sliding Window of 24 hours
+    // returning updated results every day
     val resultsD7 = resultsH24
       .groupByKey(Serialized.`with`(longSerde, Serdes.ByteArray))
       .windowedBy(TimeWindows.of(TimeUnit.DAYS.toMillis(7)).advanceBy(TimeUnit.HOURS.toMillis(24)))
@@ -125,6 +129,8 @@ object Query1 {
       .toStream
       .selectKey((windowed_k, _) => windowed_k.window().start)
 
+    // Compute from beginning statistics from the weekly one apply a stream transformer to update
+    // state store with statistics and related begin timestamp, returning updated results every day
     val resultsAllTime = resultsH24
       .map(
         (timestamp, values) => {
@@ -201,17 +207,12 @@ object Query1 {
       .map(
         (state, array) => {
           val values = SerializerAny.deserialize(array).asInstanceOf[Array[scala.Long]]
-          println("aaa")
           (state, KafkaAvroParser.fromFriendshipsResultsRecordToByteArray(0l, values, KafkaAvroParser.schemaFriendshipResultsAllTime))
         }
       )
       .to(Configuration.FRIENDS_OUTPUT_TOPIC_ALLTIME)(Produced.`with`(Serdes.String, Serdes.ByteArray()))
 
-    // Now that we have finished the definition of the processing topology we can actually run
-    // it via `start()`.  The Streams application as a whole can be launched just like any
-    // normal Java application that has a `main()` method.
     val topology: Topology = builder.build()
-
 
     if (Configuration.DEBUG) { println(topology.describe)}
 
