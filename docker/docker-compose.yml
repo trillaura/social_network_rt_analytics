@@ -1,5 +1,7 @@
 version: '2'
 
+
+
 services:
     zookeeper:
         image: zookeeper
@@ -15,6 +17,7 @@ services:
     kafka0:
         image: matnar/kafka
         container_name: kafka0
+
         depends_on:
             - zookeeper
         links:
@@ -29,6 +32,7 @@ services:
     kafka1:
         image: matnar/kafka
         container_name: kafka1
+
         depends_on:
             - zookeeper
         links:
