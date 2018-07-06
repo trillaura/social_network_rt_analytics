@@ -8,7 +8,7 @@ import org.apache.storm.task.{OutputCollector, TopologyContext}
 import org.apache.storm.topology.OutputFieldsDeclarer
 import org.apache.storm.topology.base.BaseRichBolt
 import org.apache.storm.tuple.Tuple
-import utils.Configuration
+import utils.{Configuration, ResultsFileWriter}
 import utils.kafka.{KafkaAvroParser, ProducerManager}
 import utils.ranking.{RankElement, RankingResult}
 
@@ -25,7 +25,8 @@ class CollectorBolt extends BaseRichBolt {
     val start = input.getStringByField("timestamp")
     val rankElements = ranking.toArray
 
-    println(start + " " + rankElements.mkString(" "))
+    ResultsFileWriter.writeLine(start + " " + rankElements.mkString(" "), "storm")
+//    println(start + " " + rankElements.mkString(" "))
 
     //    val timestamp = input.getLongByField("ts").asInstanceOf[scala.Long]
     //    val post_id_1 = input.getLongByField("post_id_1").asInstanceOf[scala.Long]

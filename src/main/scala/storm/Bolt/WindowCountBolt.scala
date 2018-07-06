@@ -1,7 +1,6 @@
 package storm.Bolt
 
 import java.util
-import java.util.{Calendar, Date, GregorianCalendar}
 
 import org.apache.storm.task.{OutputCollector, TopologyContext}
 import org.apache.storm.topology.OutputFieldsDeclarer
@@ -9,6 +8,7 @@ import org.apache.storm.topology.base.BaseRichBolt
 import org.apache.storm.tuple.{Fields, Tuple, Values}
 import org.joda.time.{DateTime, DateTimeZone}
 import storm.utils.Window
+import utils.Parser
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -67,11 +67,8 @@ class WindowCountBolt extends BaseRichBolt {
   }
 
   def handleMetronomeMessage(tuple: Tuple): Unit = {
-    val ts: Long = tuple.getStringByField("ts").toLong
-
+    val currentTime: Long = tuple.getStringByField("ts").toLong
     val windowSlide: Long = windowConfiguration(Config.TOPOLOGY_BOLTS_SLIDING_INTERVAL_DURATION_MS) // slide interval in ms
-    //    val currentTime: Long = roundToCompletedMinute(ts)
-    val currentTime = ts
 
     val elapsed: Long = currentTime - windowStart // elapsed time from last frame in ms
     val frameToSlide = (elapsed / windowSlide).toInt // forward window of fromToSlide nslot
@@ -88,17 +85,18 @@ class WindowCountBolt extends BaseRichBolt {
 
         w.moveForward(frameToSlide)
 
-        if (estimateTotal == 0) {
+        if (estimateTotal != 0) {
           expired.add(postID)
+
+
+          val values: Values = new Values()
+          values.add(currentTime.toString)
+          values.add(postID)
+          values.add(estimateTotal.toString)
+          values.add(windowStart.toString)
+
+          _collector.emit(values)
         }
-
-        val values: Values = new Values()
-        values.add(ts.toString)
-        values.add(postID)
-        values.add(estimateTotal.toString)
-        values.add(windowStart.toString)
-
-        _collector.emit(values)
       }
 
       // Free memory
@@ -117,81 +115,17 @@ class WindowCountBolt extends BaseRichBolt {
     val id: String = tuple.getStringByField("post_commented")
     val count: Int = tuple.getStringByField("count").toInt
 
-    val windowSlide: Long = windowConfiguration(Config.TOPOLOGY_BOLTS_SLIDING_INTERVAL_DURATION_MS) // slide interval in ms
-    //    val currentTime: Long = roundToCompletedMinute(ts)
-
-    val elapsed: Long = ts - windowStart // elapsed time from last frame in ms
-    val frameToSlide = (elapsed / windowSlide).toInt // forward window of fromToSlide nslot
-
-    if (frameToSlide > 0) {
-      windowStart += (frameToSlide * windowSlide)
-
-      val expired = new util.ArrayList[String]()
-
-      for (postID: String <- windowPerPost.keySet().asScala) {
-        val w: Window = windowPerPost.get(postID)
-
-        w.moveForward(frameToSlide)
-
-        if (postID != id) {
-          val estimateTotal = w.estimateTotal()
-          if (w.estimateTotal() == 0) {
-            expired.add(postID)
-          }
-          val values: Values = new Values()
-          values.add(ts.toString)
-          values.add(postID)
-          values.add(w.estimateTotal().toString)
-          values.add(windowStart.toString)
-
-          _collector.emit(values)
-        }
-      }
-
-      // Free memory
-      val iterator = expired.iterator()
-      while (iterator.hasNext) {
-        val elem = iterator.next()
-        windowPerPost.remove(elem)
-      }
-
-    }
-
     var w: Window = windowPerPost.get(id)
     if (w == null) {
       w = new Window(nSlot)
       windowPerPost.put(id, w)
     }
 
-    //    if (tuple.contains("start")) {
-    //      val start: Long = tuple.getStringByField("start").toLong
-    //      if (isValid(start)) {
-    //        w.increment(count)
-    //      }
-    //    } else {
     w.increment(count)
-    //    }
-
-    //    val total = w.computeTotal
-    //    val values: Values = new Values()
-    //    values.add(ts.toString)
-    //    values.add(id)
-    //    values.add(total.toString)
-    //    values.add(windowStart.toString)
-    //
-    //    _collector.emit(values)
 
     _collector.ack(tuple)
   }
 
-  private def roundToCompletedMinute(timestamp: Long) = {
-    val d = new Date(timestamp)
-    val date = new GregorianCalendar
-    date.setTime(d)
-    date.set(Calendar.SECOND, 0)
-    date.set(Calendar.MILLISECOND, 0)
-    date.getTime.getTime
-  }
 
   override def declareOutputFields(declarer: OutputFieldsDeclarer): Unit = {
     declarer.declare(new Fields("ts", "post_commented", "count", "start"))

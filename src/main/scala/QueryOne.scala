@@ -35,9 +35,6 @@ object QueryOne {
     */
   def executeWithSlidingWindowParallel(ds: DataStream[(String, String, String)]): Unit = {
 
-    /*
-      Remove duplicates for bidirectional friendships
-    */
     val filtered = ds
       .mapWith(str => {
         // Put first the biggest user's id
@@ -48,6 +45,7 @@ object QueryOne {
       // filtering
       .flatMap(new FilterFunction)
 
+    // Compute statistics for each user to make it parallel
     val dailyCountIndividual = filtered
       // Map into (timestamp, user1_id)
       .mapWith(tuple => (new DateTime(tuple._1).getMillis, tuple._2))
@@ -60,7 +58,6 @@ object QueryOne {
       .aggregate(new CountDaily, new AddWindowStartDaily)
       .setParallelism(4)
 
-
     val dailyCount = dailyCountIndividual
       // Map into (start, [count00, count01 ,...])
       .mapWith(tuple => (tuple._2, tuple._3))
@@ -68,29 +65,17 @@ object QueryOne {
       // Aggregating the arrays of counters
       .reduce((v1, v2) => (v1._1, v1._2.zip(v2._2).map { case (x, y) => x + y }))
 
-    dailyCount.mapWith(res => {
-      val startWindow = new DateTime(res._1)
-      println("daily - " + startWindow.toString(), res._2.mkString(" "))
-    })
-
-
     // Weekly counts is performed as sum of the daily counts
-    val weeklyCountIndividual =
+    val weeklyCount =
       dailyCountIndividual
+        // Compute statistics for each user'id
         .keyBy(userId => userId._1)
         .timeWindow(Time.days(7), Time.hours(24))
         .aggregate(new CountWeekly, new AddWindowStartWeekly)
         .setParallelism(4)
-
-    // Aggregating weekly counters
-    val weeklyCount = weeklyCountIndividual
-      .keyBy(windowStart => windowStart._1)
-      .reduce((v1, v2) => (v1._1, v1._2.zip(v2._2).map { case (x, y) => x + y }))
-
-    weeklyCount.mapWith(res => {
-      val startWindow = new DateTime(res._1)
-      println("weekly - " + startWindow.toString(), res._2.mkString(" "))
-    })
+        // Aggregating weekly counters
+        .keyBy(windowStart => windowStart._1)
+        .reduce((v1, v2) => (v1._1, v1._2.zip(v2._2).map { case (x, y) => x + y }))
 
     val globalCount =
       dailyCountIndividual
@@ -98,10 +83,9 @@ object QueryOne {
         .countWindowAll(1)
         .process(new CountWithState)
 
-    globalCount.mapWith(res => {
-      val startWindow = new DateTime(res._1)
-      println("global - " + startWindow.toString(), res._2.mkString(" "))
-    })
+    /*
+        Adding sink: Write on Kafka topic
+     */
 
     dailyCount.addSink(
       new FlinkKafkaProducer011(
@@ -125,18 +109,17 @@ object QueryOne {
     )
   }
 
+  /**
+    * Query one implementation using tumbling window.
+    * Weekly statistics with parallel operator.
+    * @param ds : DataStream
+    */
   def executeWithTumblingWindowParallel(ds: DataStream[(String, String, String)]): Unit = {
 
-    /*
-      Remove duplicates for bidirectional friendships
-    */
     val filtered = ds
       .mapWith(str => {
-        // Put first the biggest user's id
-        if (str._2.toLong > str._3.toLong)
-          (str._1, str._2, str._3)
-        else
-          (str._1, str._3, str._2)
+        if (str._2.toLong > str._3.toLong) (str._1, str._2, str._3)
+        else (str._1, str._3, str._2)
       })
       .keyBy(conn => (conn._2, conn._3))
       .flatMap(new FilterFunction)
@@ -151,8 +134,6 @@ object QueryOne {
       .setParallelism(4)
 
 
-    println("PARALLELISM:" + dailyCountIndividual.parallelism)
-
     val dailyCount = dailyCountIndividual
       // Remove user'id field
       .mapWith(tuple => (tuple._2, tuple._3))
@@ -165,15 +146,12 @@ object QueryOne {
       println("daily - " + startWindow.toString(), res._2.mkString(" "))
     })
 
-
     val weeklyCountIndividual =
       dailyCountIndividual
         // (user1_id, daily count start, counters)
         .keyBy(userId => userId._1)
         .timeWindow(Time.days(7))
         .aggregate(new CountWeekly, new AddWindowStartWeekly)
-
-    println("PARALLELISM:" + weeklyCountIndividual.parallelism)
 
     val weeklyCount = weeklyCountIndividual
       .keyBy(windowStart => windowStart._1)
@@ -193,19 +171,20 @@ object QueryOne {
           println("global - " + startWindow.toString(), res._2.mkString(" "))
         })
 
-
   }
 
+  /**
+    *
+    * @param ds : DataStream
+    */
   def executeWithTumblingWindow(ds: DataStream[(String, String, String)]): Unit = {
 
     // Remove bidirectional friendships
     val filtered = ds
       .mapWith(str => {
         // Put first the biggest user's id
-        if (str._2.toLong > str._3.toLong)
-          (str._1, str._2, str._3)
-        else
-          (str._1, str._3, str._2)
+        if (str._2.toLong > str._3.toLong) (str._1, str._2, str._3)
+        else (str._1, str._3, str._2)
       })
       .keyBy(conn => (conn._2, conn._3))
       .flatMap(new FilterFunction)
