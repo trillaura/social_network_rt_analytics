@@ -71,5 +71,12 @@ Compile / run := Defaults.runTask(Compile / fullClasspath,
 Compile / run / fork := true
 Global / cancelable := true
 
+assemblyMergeStrategy in assembly := {
+  case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+  case PathList("com", "esotericsoftware", xs @ _*) => MergeStrategy.last
+  case "project.clj" =>  MergeStrategy.last
+  case x => MergeStrategy.first
+}
+
 // exclude Scala library from assembly
 assembly / assemblyOption := (assembly / assemblyOption).value.copy(includeScala = false)
