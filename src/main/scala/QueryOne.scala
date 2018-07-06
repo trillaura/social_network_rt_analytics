@@ -6,17 +6,16 @@ import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.scala.extensions._
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows
 import org.apache.flink.streaming.api.windowing.time.Time
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer011
+import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer011, FlinkKafkaProducer011}
 import org.joda.time.{DateTime, DateTimeZone}
 import utils._
 import utils.flink._
+import utils.kafka.KafkaAvroParser
 
 object QueryOne {
 
   val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
   env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-
-  val data: DataStream[String] = env.readTextFile("dataset/friendships.dat")
 
   val properties = new Properties()
   properties.setProperty("bootstrap.servers", Configuration.BOOTSTRAP_SERVERS)
@@ -93,17 +92,37 @@ object QueryOne {
       println("weekly - " + startWindow.toString(), res._2.mkString(" "))
     })
 
-    val global =
+    val globalCount =
       dailyCountIndividual
         .mapWith(tuple => (tuple._2, tuple._3))
         .countWindowAll(1)
         .process(new CountWithState)
-        .mapWith(res => {
-          val startWindow = new DateTime(res._1)
-          println("global - " + startWindow.toString(), res._2.mkString(" "))
-        })
 
+    globalCount.mapWith(res => {
+      val startWindow = new DateTime(res._1)
+      println("global - " + startWindow.toString(), res._2.mkString(" "))
+    })
 
+    dailyCount.addSink(
+      new FlinkKafkaProducer011(
+        Configuration.BOOTSTRAP_SERVERS,
+        Configuration.FRIENDS_OUTPUT_TOPIC_H24,
+        new ResultAvroSerializationSchema(Configuration.FRIENDS_OUTPUT_TOPIC_H24))
+    )
+
+    weeklyCount.addSink(
+      new FlinkKafkaProducer011(
+        Configuration.BOOTSTRAP_SERVERS,
+        Configuration.FRIENDS_OUTPUT_TOPIC_D7,
+        new ResultAvroSerializationSchema(Configuration.FRIENDS_OUTPUT_TOPIC_D7))
+    )
+
+    globalCount.addSink(
+      new FlinkKafkaProducer011(
+        Configuration.BOOTSTRAP_SERVERS,
+        Configuration.FRIENDS_OUTPUT_TOPIC_ALLTIME,
+        new ResultAvroSerializationSchema(Configuration.FRIENDS_OUTPUT_TOPIC_ALLTIME))
+    )
   }
 
   def executeWithTumblingWindowParallel(ds: DataStream[(String, String, String)]): Unit = {
