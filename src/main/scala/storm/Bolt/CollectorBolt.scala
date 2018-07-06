@@ -12,6 +12,11 @@ import utils.{Configuration, Parser, ResultsFileWriter}
 import utils.kafka.{KafkaAvroParser, ProducerManager}
 import utils.ranking.{RankElement, RankingResult}
 
+
+/**
+  * The collector receives the output stream from the GlobalRank bolt and
+  * print them into the output source.
+  */
 class CollectorBolt extends BaseRichBolt {
 
   var _collector: OutputCollector = _

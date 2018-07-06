@@ -112,6 +112,7 @@ object QueryOne {
   /**
     * Query one implementation using tumbling window.
     * Weekly statistics with parallel operator.
+    *
     * @param ds : DataStream
     */
   def executeWithTumblingWindowParallel(ds: DataStream[(String, String, String)]): Unit = {
@@ -174,6 +175,8 @@ object QueryOne {
   }
 
   /**
+    * Query one implementation using tumbling window and no parallelism.
+    * The advantage is that it does not produce intermediate result caused by reduce operators
     *
     * @param ds : DataStream
     */
