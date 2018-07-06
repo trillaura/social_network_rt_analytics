@@ -3,7 +3,7 @@ package utils.redis
 import com.redis.{RedisClient, RedisClientPool}
 import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
-import utils.Configuration
+import utils.{Configuration, ResultsFileWriter}
 import utils.kafka.KafkaAvroParser
 
 import scala.collection.JavaConverters._
@@ -70,9 +70,14 @@ object RedisManager {
 
   def main(args: Array[String]): Unit = {
     while (true) {
-      getResultsBySchema(KafkaAvroParser.schemaFriendshipResultsH24.getName)
-      getResultsBySchema(KafkaAvroParser.schemaFriendshipResultsD7.getName)
-      getResultsBySchema(KafkaAvroParser.schemaFriendshipResultsAllTime.getName)
+      val res1 = getResultsBySchema(KafkaAvroParser.schemaFriendshipResultsH24.getName)
+      val res2 = getResultsBySchema(KafkaAvroParser.schemaFriendshipResultsD7.getName)
+      val res3 = getResultsBySchema(KafkaAvroParser.schemaFriendshipResultsAllTime.getName)
+
+      res1.foreach(line => ResultsFileWriter.writeLine(line, KafkaAvroParser.schemaFriendshipResultsH24.getName))
+      res2.foreach(line => ResultsFileWriter.writeLine(line, KafkaAvroParser.schemaFriendshipResultsD7.getName))
+      res3.foreach(line => ResultsFileWriter.writeLine(line, KafkaAvroParser.schemaFriendshipResultsAllTime.getName))
+
       Thread.sleep(10000)
     }
   }
