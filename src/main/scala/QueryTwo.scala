@@ -4,17 +4,13 @@ import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.windowing.assigners.{SlidingEventTimeWindows, TumblingEventTimeWindows}
 import org.apache.flink.streaming.api.windowing.time.Time
-import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer011, FlinkKafkaProducer011}
-import utils.{Configuration, Parser}
-import utils.flink.CommentsAvroDeserializationSchema
 import java.util.Properties
 
 import flink_operators.{GlobalRanker, IncrementalRankMerger, PartialRanker, SimpleScoreAggregator}
 import org.apache.flink.api.java.utils.ParameterTool
-import utils.flink.CommentsAvroDeserializationSchema
 import utils.ranking._
-import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer011, FlinkKafkaProducer011}
-import utils.{Configuration, Parser}
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer011
+import utils.Configuration
 import utils.flink.{CommentsAvroDeserializationSchema, ResultAvroSerializationSchemaRanking}
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer011
 import utils.Parser
