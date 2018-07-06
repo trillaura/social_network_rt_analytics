@@ -8,15 +8,18 @@ import org.apache.storm.topology.base.BaseRichBolt
 import org.apache.storm.tuple.{Fields, Tuple, Values}
 import org.joda.time.{DateTime, DateTimeZone}
 import storm.utils.Window
-import utils.Parser
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
+/**
+  * Windowed bolt to compute cthe count of comment for each post.
+  * This class keep a window for each post'id that it has seen.
+  * When a Metronome's tuple is received the slide interval has elapsed and then it's time to emit!
+  */
 class WindowCountBolt extends BaseRichBolt {
 
   private val windowConfiguration: mutable.Map[String, Long] = new mutable.HashMap[String, Long]()
-
   private var windowPerPost: util.HashMap[String, Window] = _
 
   private var windowStart: Long = 0
@@ -51,13 +54,13 @@ class WindowCountBolt extends BaseRichBolt {
   override def execute(input: Tuple): Unit = {
 
     val source = input.getSourceStreamId
-    if (source.equals("sMetronome.hourly") &&
+    if (source.equals(Metronome.S_METRONOME_HOURLY) &&
       windowConfiguration(Config.TOPOLOGY_BOLTS_WINDOW_SIZE_MS) == Config.hourlyCountWindowSize) {
       handleMetronomeMessage(input)
-    } else if (source.equals("sMetronome.daily") &&
+    } else if (source.equals(Metronome.S_METRONOME_DAiLY) &&
       windowConfiguration(Config.TOPOLOGY_BOLTS_WINDOW_SIZE_MS) == Config.dailyCountWindowSize) {
       handleMetronomeMessage(input)
-    } else if (source.equals("sMetronome.weekly") &&
+    } else if (source.equals(Metronome.S_METRONOME_WEEKLY) &&
       windowConfiguration(Config.TOPOLOGY_BOLTS_WINDOW_SIZE_MS) == Config.weeklyCountWindowSize) {
       handleMetronomeMessage(input)
     } else {

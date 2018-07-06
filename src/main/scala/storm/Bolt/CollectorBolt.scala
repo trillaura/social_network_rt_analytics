@@ -20,7 +20,6 @@ import utils.ranking.{RankElement, RankingResult}
 class CollectorBolt extends BaseRichBolt {
 
   var _collector: OutputCollector = _
-
   var producer: StormResultsProducer = _
 
   override def execute(input: Tuple): Unit = {
@@ -29,16 +28,11 @@ class CollectorBolt extends BaseRichBolt {
     val start = input.getStringByField("timestamp")
     val rankElements = ranking.toArray
 
-
-
-    ////    ResultsFileWriter.writeLine(start + " " + rankElements.mkString(" "), "storm")
     println(start + " " + rankElements.mkString(" "))
 
     val timestamp = Parser.convertToDateTime(start).getMillis
-
     val data = KafkaAvroParser.fromCommentsResultsRecordToByteArray(
       timestamp, rankElements, KafkaAvroParser.schemaCommentResultsH1)
-
 
     val p: Thread = new Thread {
       producer.produce(timestamp, data)

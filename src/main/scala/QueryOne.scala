@@ -101,7 +101,7 @@ object QueryOne {
   }
 
   // ============================ //
-  //  ALTERNATIVE IMPLEMENTATION  //
+  //  ALTERNATIVE IMPLEMENTATIONS  //
   // ============================ //
 
 

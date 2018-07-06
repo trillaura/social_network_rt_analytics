@@ -9,6 +9,10 @@ import org.apache.storm.topology.base.BaseRichBolt
 import org.apache.storm.tuple.{Fields, Tuple, Values}
 import utils.kafka.KafkaAvroParser
 
+/**
+  * It receives tuples in Avro format as array of byte so it deserialize the record
+  * and extracts its fields.
+  */
 class ParseLine extends BaseRichBolt {
 
   private var _collector: OutputCollector = _
@@ -22,7 +26,7 @@ class ParseLine extends BaseRichBolt {
 
   override def execute(input: Tuple): Unit = {
 
-    val record : GenericRecord =
+    val record: GenericRecord =
       KafkaAvroParser.fromByteArrayToCommentRecord(input.getValueByField("line").asInstanceOf[Array[Byte]])
 
     val values = new Values()
