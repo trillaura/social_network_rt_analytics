@@ -22,7 +22,7 @@ object KafkaManager {
 
   def listTopics(): ListTopicsResult = {
     val list = admin.listTopics(new ListTopicsOptions().timeoutMs(1000).listInternal(true))
-    list.names().get().asScala.foreach(t => println(t))
+    if (Configuration.DEBUG) { list.names().get().asScala.foreach(t => println(t)) }
     list
   }
 
@@ -32,6 +32,11 @@ object KafkaManager {
       if (t.equals(topic)) { return true }
     }
     false
+  }
+
+  def clearAll() : Unit = {
+    val list = listTopics()
+    admin.deleteTopics(list.names().get())
   }
 
   def createTopic(topic: String, partitions: Int, replication: Short): Unit = {

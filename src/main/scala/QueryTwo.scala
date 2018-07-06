@@ -4,9 +4,9 @@ import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.windowing.assigners.{SlidingEventTimeWindows, TumblingEventTimeWindows}
 import org.apache.flink.streaming.api.windowing.time.Time
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer011
-import utils.Parser
-import utils.flink.CommentsAvroDeserializationSchema
+import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer011, FlinkKafkaProducer011}
+import utils.{Configuration, Parser}
+import utils.flink.{CommentsAvroDeserializationSchema, ResultAvroSerializationSchemaRanking}
 import java.util.Properties
 
 import flink_operators.{GlobalRanker, IncrementalRankMerger, PartialRanker, SimpleScoreAggregator}
@@ -72,6 +72,33 @@ object QueryTwo {
       .process(new IncrementalRankMerger)
 
     weeklyResults.writeAsText("results/q2-weekly-p")
+
+    /*
+       Adding sink: Write on Kafka topic
+    */
+
+    hourlyResults.addSink(
+      new FlinkKafkaProducer011(
+        Configuration.BOOTSTRAP_SERVERS,
+        Configuration.COMMENTS_OUTPUT_TOPIC_H1,
+        new ResultAvroSerializationSchemaRanking(Configuration.COMMENTS_OUTPUT_TOPIC_H1)
+      )
+    )
+
+    dailyResults.addSink(
+      new FlinkKafkaProducer011(
+        Configuration.BOOTSTRAP_SERVERS,
+        Configuration.COMMENTS_OUTPUT_TOPIC_H24,
+        new ResultAvroSerializationSchemaRanking(Configuration.COMMENTS_OUTPUT_TOPIC_H24)
+      )
+    )
+
+    weeklyResults.addSink(
+      new FlinkKafkaProducer011(
+        Configuration.BOOTSTRAP_SERVERS,
+        Configuration.COMMENTS_OUTPUT_TOPIC_7D,
+        new ResultAvroSerializationSchemaRanking(Configuration.COMMENTS_OUTPUT_TOPIC_7D))
+    )
 
   }
 

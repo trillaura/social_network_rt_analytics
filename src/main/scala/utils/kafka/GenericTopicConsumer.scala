@@ -20,7 +20,7 @@ object GenericTopicConsumer {
     val topic = args(3)
 
     if (key_type.toLowerCase.equals("string") && value_type.toLowerCase.equals("bytearray")) {
-      consumerStringByteArray = ConsumerManager.getDefaultConsumerStringByteArray
+      consumerStringByteArray = new ConsumerManager().createInputConsumer(topic)
       consumerStringByteArray.subscribe(List(topic).asJavaCollection)
 
       val records = consumerStringByteArray.poll(1000)
@@ -30,7 +30,7 @@ object GenericTopicConsumer {
       )
 
     } else if (key_type.toLowerCase.equals("long") && value_type.toLowerCase.equals("bytearray")) {
-      consumerLongByteArray = ConsumerManager.getDefaultConsumerLongByteArray
+      consumerLongByteArray = new ConsumerManager().createOutputConsumer(topic)
       consumerLongByteArray.subscribe(List(topic).asJavaCollection)
 
       val records = consumerLongByteArray.poll(1000)

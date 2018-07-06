@@ -7,6 +7,8 @@ object ProducerLauncher {
   def launch() : Unit = {
     val FREQUENCY : Int  = 100000
 
+    KafkaManager.clearAll()
+
     for (t <- Configuration.INPUT_TOPICS) { KafkaManager.createTopic(t, 1, 1: Short) }
 
     for (t <- Configuration.OUTPUT_TOPICS) { KafkaManager.createTopic(t, 1, 1: Short) }

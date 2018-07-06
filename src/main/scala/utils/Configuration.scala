@@ -4,6 +4,8 @@ import org.joda.time.format.DateTimeFormat
 
 object Configuration {
 
+  val DEBUG = true
+
   var REDIS_HOST: String = "localhost"
   var REDIS_PORT: Int = 6379
 

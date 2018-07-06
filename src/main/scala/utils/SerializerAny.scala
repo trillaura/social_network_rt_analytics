@@ -2,6 +2,10 @@ package utils
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
 
+/**
+  * Helper serializer/deserializer object to manage Avro records serialiazione
+  * through Kafka Streams operations.
+  */
 object SerializerAny extends Serializable {
 
   def serialize(value: Any): Array[Byte] = {

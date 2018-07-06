@@ -91,21 +91,21 @@ object QueryOne {
       new FlinkKafkaProducer011(
         Configuration.BOOTSTRAP_SERVERS,
         Configuration.FRIENDS_OUTPUT_TOPIC_H24,
-        new ResultAvroSerializationSchema(Configuration.FRIENDS_OUTPUT_TOPIC_H24))
+        new ResultAvroSerializationSchemaFriendships(Configuration.FRIENDS_OUTPUT_TOPIC_H24))
     )
 
     weeklyCount.addSink(
       new FlinkKafkaProducer011(
         Configuration.BOOTSTRAP_SERVERS,
         Configuration.FRIENDS_OUTPUT_TOPIC_D7,
-        new ResultAvroSerializationSchema(Configuration.FRIENDS_OUTPUT_TOPIC_D7))
+        new ResultAvroSerializationSchemaFriendships(Configuration.FRIENDS_OUTPUT_TOPIC_D7))
     )
 
     globalCount.addSink(
       new FlinkKafkaProducer011(
         Configuration.BOOTSTRAP_SERVERS,
         Configuration.FRIENDS_OUTPUT_TOPIC_ALLTIME,
-        new ResultAvroSerializationSchema(Configuration.FRIENDS_OUTPUT_TOPIC_ALLTIME))
+        new ResultAvroSerializationSchemaFriendships(Configuration.FRIENDS_OUTPUT_TOPIC_ALLTIME))
     )
   }
 

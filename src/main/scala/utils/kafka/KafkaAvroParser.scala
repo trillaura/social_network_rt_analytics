@@ -11,7 +11,7 @@ import org.apache.avro.io._
 import org.apache.commons.io.output.ByteArrayOutputStream
 import org.joda.time.DateTime
 import utils.Configuration
-import utils.ranking.RankElement
+import utils.ranking.{GenericRankingResult, RankElement}
 
 object KafkaAvroParser extends Serializable {
 
@@ -169,6 +169,38 @@ object KafkaAvroParser extends Serializable {
       recordInjectionFriendshipResultsD7.apply(avroRecord)
     } else {
       recordInjectionFriendshipResultsAllTime.apply(avroRecord)
+    }
+  }
+
+  def fromRankingResultsRecordToByteArray(element: GenericRankingResult[Long], topic: String): Array[Byte] = {
+    var schema : Schema = schemaCommentResultsH1
+
+    if (topic.equals(Configuration.COMMENTS_OUTPUT_TOPIC_H24))
+      schema = schemaCommentsResultsH24
+    if (topic.equals(Configuration.COMMENTS_OUTPUT_TOPIC_7D))
+      schema = schemaCommentsResultsD7
+
+    val avroRecord: GenericData.Record = new GenericData.Record(schema)
+
+    avroRecord.put("ts", element.timestamp)
+    for (i <- element.rankElements.indices) {
+      avroRecord.put("post_id_" + (i+1).toString, element.rankElements(i).id)
+      avroRecord.put("num_comments_" + (i+1).toString, element.rankElements(i).score.score().toLong)
+    }
+
+    if (element.rankElements.length < 10) {
+      for (i <- element.rankElements.length to 9) {
+        avroRecord.put("post_id_" + (i+1).toString, 0l)
+        avroRecord.put("num_comments_" + (i+1).toString, 0l)
+      }
+    }
+
+    if (schema.equals(schemaCommentResultsH1)) {
+      recordInjectionCommentsResultsH1.apply(avroRecord)
+    } else if (schema.equals(schemaCommentsResultsH24)) {
+      recordInjectionCommentsResultsH24.apply(avroRecord)
+    } else {
+      recordInjectionCommentsResultsD7.apply(avroRecord)
     }
   }
 

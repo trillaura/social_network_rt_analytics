@@ -6,6 +6,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import utils.kafka.KafkaAvroParser
 import utils.kafka.KafkaAvroParser.recordInjectionFriendship
+import utils.ranking.GenericRankingResult
 
 
 /**
@@ -27,7 +28,7 @@ class FriedshipAvroDeserializationSchema extends DeserializationSchema[(String, 
   }
 }
 
-class ResultAvroSerializationSchema(t: String) extends SerializationSchema[(Long, Array[Int])] {
+class ResultAvroSerializationSchemaFriendships(t: String) extends SerializationSchema[(Long, Array[Int])] {
 
   var topic : String = t
 
@@ -36,5 +37,14 @@ class ResultAvroSerializationSchema(t: String) extends SerializationSchema[(Long
     for (i <- element._2.indices)
       counters(i) = element._2(i).toLong
     KafkaAvroParser.fromFriendshipsResultsRecordToByteArray(element._1, counters, topic)
+  }
+}
+
+class ResultAvroSerializationSchemaRanking(t: String) extends SerializationSchema[GenericRankingResult[Long]] {
+
+  var topic : String = t
+
+  override def serialize(element: GenericRankingResult[Long]): Array[Byte] = {
+    KafkaAvroParser.fromRankingResultsRecordToByteArray(element, topic)
   }
 }
