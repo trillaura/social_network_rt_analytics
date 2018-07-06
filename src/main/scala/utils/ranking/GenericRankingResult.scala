@@ -65,6 +65,12 @@ class GenericRankingResult[A](startTime: String, elements : List[GenericRankElem
 
   }
 
+  /**
+    * Merges two rankings from different sub-windows in
+    * a larger window
+    * @param otherRankingResult
+    * @return
+    */
   def incrementalMerge(otherRankingResult: GenericRankingResult[A]) : GenericRankingResult[A] = {
 
     val thisMillis = Parser.millisFromStringDate(this.timestamp)
