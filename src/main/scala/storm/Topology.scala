@@ -15,7 +15,7 @@ object Topology {
   def main(args: Array[String]): Unit = {
 
     val config = new Config
-    config.setNumWorkers(4)
+    config.setNumWorkers(3)
     config.setMessageTimeoutSecs(5)
 
     val builder: TopologyBuilder = new TopologyBuilder
@@ -30,46 +30,93 @@ object Topology {
       .setNumTasks(3)
       .shuffleGrouping("parser")
 
-    builder.setBolt("metronome", new Metronome)
+    builder.setBolt("metronome", Metronome)
       .setNumTasks(1)
       .shuffleGrouping("filter")
 
-    builder.setBolt("hourlyCount", new WindowCountBolt().withSlidingWindow(
-      Bolt.Config.dailyCountWindowSize, 24 * 60 * 60 * 1000))
-      .setNumTasks(3)
-      .fieldsGrouping("filter", new Fields("post_commented"))
-      .allGrouping("metronome", "sMetronome")
+    /*
+      HOURLY STATISTICS
+     */
 
-    builder.setBolt("partialRank", new PartialRank)
+    builder.setBolt("hourlyCount", new WindowCountBolt().withSlidingWindow(
+      Bolt.Config.hourlyCountWindowSize, Bolt.Config.hourlyCountWindowSlide))
+      .setNumTasks(1)
+      .allGrouping("metronome", Metronome.S_METRONOME_HOURLY)
+      .fieldsGrouping("filter", new Fields("post_commented"))
+
+    builder.setBolt("hourlyPartialRank", new PartialRank)
       .setNumTasks(3)
       .fieldsGrouping("hourlyCount", new Fields("post_commented"))
 
-    builder.setBolt("globalRank", new GlobalRank)
+    builder.setBolt("hourlyGlobalRank", new GlobalRank)
+      .setNumTasks(3)
+      .shuffleGrouping("hourlyPartialRank")
+
+    /*
+      DAILY STATISTICS
+     */
+
+    builder.setBolt("dailyCount", new WindowCountBolt().withSlidingWindow(
+      Bolt.Config.dailyCountWindowSize, Bolt.Config.dailyCountWindowSlide))
+      .setNumTasks(13)
+      .allGrouping("metronome", Metronome.S_METRONOME_DAiLY)
+      .fieldsGrouping("hourlyCount", new Fields("post_commented"))
+
+    builder.setBolt("dailyPartialRank", new PartialRank)
+      .setNumTasks(3)
+      .fieldsGrouping("dailyCount", new Fields("post_commented"))
+
+    builder.setBolt("dailyGlobalRank", new GlobalRank)
       .setNumTasks(1)
-      .shuffleGrouping("partialRank")
+      .shuffleGrouping("dailyPartialRank")
+
+    /*
+      WEEKLY STATISTICS
+     */
+
+    builder.setBolt("weeklyCount", new WindowCountBolt().withSlidingWindow(
+      Bolt.Config.weeklyCountWindowSize, Bolt.Config.weeklyCountWindowSlide))
+      .setNumTasks(13)
+      .allGrouping("metronome", Metronome.S_METRONOME_WEEKLY)
+      .fieldsGrouping("dailyCount", new Fields("post_commented"))
+
+    builder.setBolt("weeklyPartialRank", new PartialRank)
+      .setNumTasks(3)
+      .fieldsGrouping("weeklyCount", new Fields("post_commented"))
+
+    builder.setBolt("weeklyGlobalRank", new GlobalRank)
+      .setNumTasks(1)
+      .shuffleGrouping("weeklyPartialRank")
+
+
+
     /*
       Collect the output
      */
     builder.setBolt("printer", new CollectorBolt())
       .setNumTasks(1)
-      .shuffleGrouping("globalRank")
-    //      .shuffleGrouping("dailyGlobalRank")
-    //      .shuffleGrouping("dailyGlobalRank")
-    //      .shuffleGrouping("weeklyGlobalRank")
+      .shuffleGrouping("hourlyGlobalRank")
+//      .shuffleGrouping("dailyGlobalRank")
+//      .shuffleGrouping("weeklyGlobalRank")
 
 
     /*
       Create topology and submit it
      */
 
-    val cluster = new LocalCluster
-    cluster.submitTopology("query2", config, builder.createTopology)
-    //    Thread.sleep(3600 * 1000)
-    //    cluster.killTopology("query2")
+    if (args.length == 2) {
 
+      if (args(1) == "local") {
+        val cluster = new LocalCluster
+        cluster.submitTopology("query2", config, builder.createTopology)
+      } else if (args(1) == "cluster")
+        StormSubmitter.submitTopology(args(0), config, builder.createTopology())
 
-    // cluster
-    //        StormSubmitter.submitTopology(args(0), conf, stormTopology)
+    } else {
+      val cluster = new LocalCluster
+      cluster.submitTopology("query2", config, builder.createTopology)
+    }
+
 
   }
 

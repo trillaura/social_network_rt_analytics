@@ -29,20 +29,20 @@ class SimpleSpout extends BaseRichSpout {
   }
 
   override def nextTuple(): Unit = {
-    for (line <- Source.fromFile(filename).getLines()) {
-      _collector.emit(new Values(line))
-    }
+    //    for (line <- Source.fromFile(filename).getLines()) {
+    //      _collector.emit(new Values(line))
+    //    }
 
-////    while (true) {
-//
-//      val records =
-//        consumer.poll(1000)
-//
-//    records.asScala.foreach(
-//      record =>
-//          _collector.emit(new Values(record), record.timestamp())
-//    )
-////    }
+    //    while (true) {
+
+    val records =
+      consumer.poll(1000)
+
+    records.asScala.foreach(
+      record =>
+        _collector.emit(new Values(record), record.timestamp())
+    )
+    //    }
 
   }
 
@@ -55,7 +55,7 @@ class SimpleSpout extends BaseRichSpout {
   }
 
 
-  def prepareConsumer() : Unit = {
+  def prepareConsumer(): Unit = {
     consumer = ConsumerManager.getDefaultConsumerStringByteArray
     ConsumerManager.subscribeConsumerStringByteArrayToTopic(Configuration.COMMENTS_INPUT_TOPIC)
   }

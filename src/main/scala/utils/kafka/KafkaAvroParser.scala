@@ -8,7 +8,7 @@ import org.apache.avro.generic.{GenericData, GenericRecord}
 import org.joda.time.DateTime
 import utils.Configuration
 
-object KafkaAvroParser {
+object KafkaAvroParser extends Serializable {
 
   GenericData.get.addLogicalTypeConversion(new TimeConversions.TimestampConversion)
 
@@ -136,6 +136,44 @@ object KafkaAvroParser {
 
   def fromFriendshipsResultsRecordToByteArray(ts: Long, counters: Array[scala.Long], schema: Schema): Array[Byte] = {
 
+
+    val avroRecord: GenericData.Record = new GenericData.Record(schema)
+
+    for (i <- counters.indices) {
+      if (ts == 0l || counters.length == 25) {
+        if (i == 0)
+          avroRecord.put("ts", counters(0))
+        else if (i <= 10)
+          avroRecord.put("count_h0" + (i-1).toString, counters(i))
+        else
+          avroRecord.put("count_h" + (i-1).toString, counters(i))
+      } else {
+        avroRecord.put("ts", ts)
+        if (i < 10)
+          avroRecord.put("count_h0" + i.toString, counters(i))
+        else
+          avroRecord.put("count_h" + i.toString, counters(i))
+      }
+    }
+
+    if (schema.equals(schemaFriendshipResultsH24)) {
+      recordInjectionFriendshipResultsH24.apply(avroRecord)
+    } else if (schema.equals(schemaFriendshipResultsD7)) {
+      recordInjectionFriendshipResultsD7.apply(avroRecord)
+    } else {
+      recordInjectionFriendshipResultsAllTime.apply(avroRecord)
+    }
+  }
+
+  def fromFriendshipsResultsRecordToByteArray(ts: Long, counters: Array[scala.Long], topic: String): Array[Byte] = {
+
+    var schema : Schema = schemaFriendshipResultsH24
+
+    if (topic.equals(Configuration.FRIENDS_OUTPUT_TOPIC_D7))
+      schema = schemaFriendshipResultsD7
+
+    if (topic.equals(Configuration.FRIENDS_OUTPUT_TOPIC_ALLTIME))
+      schema = schemaFriendshipResultsAllTime
 
     val avroRecord: GenericData.Record = new GenericData.Record(schema)
 

@@ -6,17 +6,16 @@ import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.scala.extensions._
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows
 import org.apache.flink.streaming.api.windowing.time.Time
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer011
+import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer011, FlinkKafkaProducer011}
 import org.joda.time.{DateTime, DateTimeZone}
 import utils._
 import utils.flink._
+import utils.kafka.KafkaAvroParser
 
 object QueryOne {
 
   val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
   env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-
-  val data: DataStream[String] = env.readTextFile("dataset/friendships.dat")
 
   val properties = new Properties()
   properties.setProperty("bootstrap.servers", Configuration.BOOTSTRAP_SERVERS)
@@ -26,6 +25,14 @@ object QueryOne {
   private val stream = env
     .addSource(new FlinkKafkaConsumer011(Configuration.FRIENDS_INPUT_TOPIC, new FriedshipAvroDeserializationSchema, properties))
 
+  /**
+    * Query One implementation through flink window function.
+    * The filtering step removes duplicates caused by bidirectional friendships.
+    * Daily statistics are computed with tumbling window. Sliding window are involved to compute
+    * weekly and global statistics
+    *
+    * @param ds DataStream
+    */
   def executeWithSlidingWindowParallel(ds: DataStream[(String, String, String)]): Unit = {
 
     /*
@@ -34,17 +41,19 @@ object QueryOne {
     val filtered = ds
       .mapWith(str => {
         // Put first the biggest user's id
-        if (str._2.toLong > str._3.toLong)
-          (str._1, str._2, str._3)
-        else
-          (str._1, str._3, str._2)
+        if (str._2.toLong > str._3.toLong) (str._1, str._2, str._3)
+        else (str._1, str._3, str._2)
       })
       .keyBy(conn => (conn._2, conn._3))
+      // filtering
       .flatMap(new FilterFunction)
 
     val dailyCountIndividual = filtered
+      // Map into (timestamp, user1_id)
       .mapWith(tuple => (new DateTime(tuple._1).getMillis, tuple._2))
+      // assign event timestamp
       .assignAscendingTimestamps(tuple => tuple._1)
+      // key bu user1_id
       .keyBy(tuple => tuple._2)
       .window(TumblingEventTimeWindows.of(Time.hours(24)))
       // (timestamp, user1_id) => ( user1_id, window_start, count per hourly slot)
@@ -53,10 +62,10 @@ object QueryOne {
 
 
     val dailyCount = dailyCountIndividual
-      // Remove user'id field
+      // Map into (start, [count00, count01 ,...])
       .mapWith(tuple => (tuple._2, tuple._3))
-      // Compute total count per hourly slot aggregating all counts
       .keyBy(r => r._1)
+      // Aggregating the arrays of counters
       .reduce((v1, v2) => (v1._1, v1._2.zip(v2._2).map { case (x, y) => x + y }))
 
     dailyCount.mapWith(res => {
@@ -65,14 +74,15 @@ object QueryOne {
     })
 
 
+    // Weekly counts is performed as sum of the daily counts
     val weeklyCountIndividual =
       dailyCountIndividual
-        // (user1_id, daily count start, counters)
         .keyBy(userId => userId._1)
         .timeWindow(Time.days(7), Time.hours(24))
         .aggregate(new CountWeekly, new AddWindowStartWeekly)
+        .setParallelism(4)
 
-
+    // Aggregating weekly counters
     val weeklyCount = weeklyCountIndividual
       .keyBy(windowStart => windowStart._1)
       .reduce((v1, v2) => (v1._1, v1._2.zip(v2._2).map { case (x, y) => x + y }))
@@ -82,17 +92,37 @@ object QueryOne {
       println("weekly - " + startWindow.toString(), res._2.mkString(" "))
     })
 
-    val global =
+    val globalCount =
       dailyCountIndividual
         .mapWith(tuple => (tuple._2, tuple._3))
         .countWindowAll(1)
         .process(new CountWithState)
-        .mapWith(res => {
-          val startWindow = new DateTime(res._1)
-          println("global - " + startWindow.toString(), res._2.mkString(" "))
-        })
 
+    globalCount.mapWith(res => {
+      val startWindow = new DateTime(res._1)
+      println("global - " + startWindow.toString(), res._2.mkString(" "))
+    })
 
+    dailyCount.addSink(
+      new FlinkKafkaProducer011(
+        Configuration.BOOTSTRAP_SERVERS,
+        Configuration.FRIENDS_OUTPUT_TOPIC_H24,
+        new ResultAvroSerializationSchema(Configuration.FRIENDS_OUTPUT_TOPIC_H24))
+    )
+
+    weeklyCount.addSink(
+      new FlinkKafkaProducer011(
+        Configuration.BOOTSTRAP_SERVERS,
+        Configuration.FRIENDS_OUTPUT_TOPIC_D7,
+        new ResultAvroSerializationSchema(Configuration.FRIENDS_OUTPUT_TOPIC_D7))
+    )
+
+    globalCount.addSink(
+      new FlinkKafkaProducer011(
+        Configuration.BOOTSTRAP_SERVERS,
+        Configuration.FRIENDS_OUTPUT_TOPIC_ALLTIME,
+        new ResultAvroSerializationSchema(Configuration.FRIENDS_OUTPUT_TOPIC_ALLTIME))
+    )
   }
 
   def executeWithTumblingWindowParallel(ds: DataStream[(String, String, String)]): Unit = {

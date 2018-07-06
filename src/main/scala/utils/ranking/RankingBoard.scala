@@ -9,7 +9,8 @@ class RankingBoard[A](k: Int) extends Serializable {
   def this() = this(10)
 
   var K = k
-  private val map : mutable.HashMap[A, Int] = mutable.HashMap()
+  private val map: mutable.HashMap[A, Int] = mutable.HashMap()
+
   //private var topKList :ListBuffer[RankElement] = ListBuffer()
 
   private object RankElementOrdering extends Ordering[RankElement[A]] {
@@ -18,7 +19,7 @@ class RankingBoard[A](k: Int) extends Serializable {
     }
   }
 
-  private var rankChanged : Boolean = false
+  private var rankChanged: Boolean = false
 
 
   //private var topKTreeSet : mutable.TreeSet[RankElement[A]] = mutable.TreeSet[RankElement[A]]()
@@ -26,20 +27,20 @@ class RankingBoard[A](k: Int) extends Serializable {
 
   //private var min : RankElement[A] = null
 
-  var listBuffer : ListBuffer[RankElement[A]] = ListBuffer()
+  var listBuffer: ListBuffer[RankElement[A]] = ListBuffer()
 
-  def merge(otherBoard: RankingBoard[A]) : RankingBoard[A] = {
+  def merge(otherBoard: RankingBoard[A]): RankingBoard[A] = {
     var newK = 10
-    if(this.K < otherBoard.K){
+    if (this.K < otherBoard.K) {
       newK = this.K
-    }else {
+    } else {
       newK = otherBoard.K
     }
     val mergedBoard = new RankingBoard[A](newK)
     val firstTopKBuffer = this.listBuffer.clone()
     val secondTopKBuffer = otherBoard.listBuffer.clone()
     var mergedTopKBuffer = firstTopKBuffer ++: secondTopKBuffer
-    mergedTopKBuffer = mergedTopKBuffer.sortWith(_ >= _).slice(0, newK )
+    mergedTopKBuffer = mergedTopKBuffer.sortWith(_ >= _).slice(0, newK)
     mergedBoard.listBuffer = mergedTopKBuffer
     mergedBoard
   }
@@ -84,14 +85,14 @@ class RankingBoard[A](k: Int) extends Serializable {
   }
   */
 
-  def rankHasChanged() : Boolean = {
-    if(rankChanged){
+  def rankHasChanged(): Boolean = {
+    if (rankChanged) {
       rankChanged = false
       true
     } else false
   }
 
-  def isEmpty() : Boolean = {
+  def isEmpty(): Boolean = {
     map.isEmpty
   }
 
@@ -99,16 +100,16 @@ class RankingBoard[A](k: Int) extends Serializable {
     listBuffer.sortWith(_ >= _).toList
   }
 
-  def printTopK() : Unit = {
+  def printTopK(): Unit = {
     println("Top-K")
     //topKTreeSet.foreach(println(_))
     listBuffer.sortWith(_ >= _).foreach(println(_))
   }
 
-  def findListMin():RankElement[A] = {
+  def findListMin(): RankElement[A] = {
     var min = listBuffer.head
-    for(el <- listBuffer){
-      if(el.score <= min.score){
+    for (el <- listBuffer) {
+      if (el.score <= min.score) {
         min = el
       }
     }
@@ -116,33 +117,35 @@ class RankingBoard[A](k: Int) extends Serializable {
   }
 
   def updateTop(key: A, value: Int): Unit = {
-    if(listBuffer.isEmpty){
-      listBuffer += RankElement(key,value)
+    if (listBuffer.isEmpty) {
+      listBuffer += RankElement(key, value)
       rankChanged = true
       return
     }
 
     val listMin = findListMin()
-    if(value < listMin.score && listBuffer.size >= k){ return }
+    if (value < listMin.score && listBuffer.size >= k) {
+      return
+    }
 
-    var toRemove :RankElement[A] = null
-    for( el <- listBuffer){
-      if(el.id == key){
+    var toRemove: RankElement[A] = null
+    for (el <- listBuffer) {
+      if (el.id == key) {
         toRemove = el
       }
     }
 
-    if(toRemove != null) {
+    if (toRemove != null) {
       listBuffer -= toRemove
-      listBuffer += RankElement(key,value)
+      listBuffer += RankElement(key, value)
       rankChanged = true
     }
 
-    if(listBuffer.size >= k){
+    if (listBuffer.size >= k) {
       listBuffer -= findListMin()
       rankChanged = true
     }
-    if(toRemove == null) {
+    if (toRemove == null) {
       listBuffer += RankElement(key, value)
       rankChanged = true
     }
@@ -150,7 +153,7 @@ class RankingBoard[A](k: Int) extends Serializable {
 
   def incrementScoreBy(key: A, delta: Int): Unit = {
     var value = map.getOrElse(key, -1)
-    if(value == -1){
+    if (value == -1) {
       value += 1 + delta
       //map(key) = delta
     } else {
@@ -159,18 +162,33 @@ class RankingBoard[A](k: Int) extends Serializable {
     map += (key -> value)
 
     //updateTopK(key,value)
-    updateTop(key,value)
+    updateTop(key, value)
+  }
+
+
+  def insertScore(key: A, score: Int): Unit = {
+    var value = map.getOrElse(key, -1)
+    if (value == -1) {
+      value += 1 + score
+      //map(key) = delta
+    } else {
+      value = score
+    }
+    map += (key -> value)
+
+    //updateTopK(key,value)
+    updateTop(key, value)
   }
 
   def incrementScore(key: A): Unit = {
-    incrementScoreBy(key,1)
+    incrementScoreBy(key, 1)
   }
 
-  def size() : Int = {
+  def size(): Int = {
     map.size
   }
 
-  def scoreOf(key: A) : Int = {
+  def scoreOf(key: A): Int = {
     map.getOrElse(key, -1)
   }
 

@@ -2,7 +2,7 @@ package storm.utils
 
 class Window(size: Int) {
 
-  private val timeFrames = new Array[Int](size)
+  val timeFrames = new Array[Int](size)
   private var headSlot = 0
   private var tailSlot = slotAfter(headSlot)
 
@@ -10,7 +10,7 @@ class Window(size: Int) {
 
 
   def moveForward(): Int = {
-    val value = timeFrames(headSlot)
+    val value = timeFrames(tailSlot)
     timeFrames(tailSlot) = 0
     advanceHead()
     count -= value

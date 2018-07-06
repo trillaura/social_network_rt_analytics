@@ -1,0 +1,75 @@
+version: '2'
+
+
+
+services:
+    zookeeper:
+        image: zookeeper
+        container_name: zookeeper
+        restart: always
+        ports:
+             - "2181:2181"
+             - "2888:2888"
+             - "3888:3888"
+        tty: false
+        stdin_open: false
+
+    kafka0:
+        image: matnar/kafka
+        container_name: kafka0
+
+        depends_on:
+            - zookeeper
+        links:
+            - zookeeper
+        ports:
+            - "9092:9092"
+        environment:
+            - BROKER_ID=0
+        stdin_open: true
+        tty: true
+
+    kafka1:
+        image: matnar/kafka
+        container_name: kafka1
+
+        depends_on:
+            - zookeeper
+        links:
+            - zookeeper
+        ports:
+            - "9093:9092"
+        environment:
+            - BROKER_ID=1
+        stdin_open: true
+        tty: true
+
+    kafka2:
+        image: matnar/kafka
+        container_name: kafka2
+        depends_on:
+            - zookeeper
+        links:
+            - zookeeper
+        ports:
+            - "9094:9092"
+        environment:
+            - BROKER_ID=2
+        stdin_open: true
+        tty: true
+
+    redis-server:
+        image: sickp/alpine-redis
+        container_name: redis-server
+        depends_on:
+            - kafka0
+            - kafka1
+            - kafka2
+        links:
+            - kafka0
+            - kafka1
+            - kafka2
+        ports:
+            - "6379:6379"
+        stdin_open: true
+        tty: true
