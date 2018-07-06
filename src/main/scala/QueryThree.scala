@@ -1,8 +1,9 @@
 import java.util.concurrent.TimeUnit
-import flink_operators.{GlobalRanker, PartialRanker, UserScoreAggregator}
+
+import flink_operators.{GlobalRanker, IncrementalRankMerger, PartialRanker, UserScoreAggregator}
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
-import org.apache.flink.streaming.api.windowing.assigners.SlidingEventTimeWindows
+import org.apache.flink.streaming.api.windowing.assigners.{SlidingEventTimeWindows, TumblingEventTimeWindows}
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.scala._
 import utils.ranking.UserScore
@@ -31,7 +32,7 @@ object QueryThree {
 
     val hourlyResults = postsData.union(commentsData, friendshipData)
       .keyBy(_._1)
-      .window(SlidingEventTimeWindows.of(Time.hours(1), Time.minutes(30)))
+      .window(TumblingEventTimeWindows.of(Time.hours(1) )) //, Time.minutes(30)))
       .aggregate(new UserScoreAggregator, new PartialRanker)
       .process(new GlobalRanker)
 
@@ -39,15 +40,17 @@ object QueryThree {
 
     val dailyResults = hourlyResults
       .assignAscendingTimestamps(res => Parser.millisFromStringDate(res.timestamp))
-      .windowAll(SlidingEventTimeWindows.of(Time.hours(24), Time.hours(1) ))
-      .reduce(_ mergeRank _)
+      .windowAll(TumblingEventTimeWindows.of(Time.hours(24) ))//, Time.hours(1) ))
+      .process(new IncrementalRankMerger)
+      //.reduce(_ mergeRank _)
 
     dailyResults.writeAsText("results/q3-daily")
 
     val weeklyResults = dailyResults
       .assignAscendingTimestamps(res => Parser.millisFromStringDate(res.timestamp))
-      .windowAll(SlidingEventTimeWindows.of(Time.days(7),Time.days(1)))
-      .reduce(_ mergeRank _)
+      .windowAll(TumblingEventTimeWindows.of(Time.days(7) ))//,Time.days(1)))
+      .process(new IncrementalRankMerger)
+      //.reduce(_ mergeRank _)
 
     weeklyResults.writeAsText("results/q3-weekly")
 

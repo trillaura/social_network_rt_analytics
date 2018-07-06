@@ -17,9 +17,10 @@ object Metronome extends BaseRichBolt {
 
 
   override def declareOutputFields(declarer: OutputFieldsDeclarer): Unit = {
-    declarer.declareStream(S_METRONOME_HOURLY, new Fields("ts", "post_commented"))
-    declarer.declareStream(S_METRONOME_DAiLY, new Fields("ts", "post_commented"))
-    declarer.declareStream(S_METRONOME_WEEKLY, new Fields("ts", "post_commented"))
+    declarer.declareStream(S_METRONOME_HOURLY, new Fields("ts", "post_commented", "count"))
+    declarer.declareStream(S_METRONOME_DAiLY, new Fields("ts", "post_commented", "count"))
+    declarer.declareStream(S_METRONOME_WEEKLY, new Fields("ts", "post_commented", "count"))
+    declarer.declare( new Fields("ts", "post_commented", "count"))
 
   }
 
@@ -37,6 +38,7 @@ object Metronome extends BaseRichBolt {
     val values = new Values()
     values.add(ts)
     values.add(postID)
+    values.add("1")
 
     if (elapsed > 0) {
       // Time must go forward
@@ -55,7 +57,6 @@ object Metronome extends BaseRichBolt {
     }
 
     currentTime = ts.toLong
-
     _collector.ack(input)
 
   }

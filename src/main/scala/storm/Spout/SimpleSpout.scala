@@ -29,19 +29,19 @@ class SimpleSpout extends BaseRichSpout {
   }
 
   override def nextTuple(): Unit = {
-    //    for (line <- Source.fromFile(filename).getLines()) {
-    //      _collector.emit(new Values(line))
-    //    }
+    for (line <- Source.fromFile(filename).getLines()) {
+      _collector.emit(new Values(line))
+    }
 
     //    while (true) {
 
-    val records =
-      consumer.poll(1000)
-
-    records.asScala.foreach(
-      record =>
-        _collector.emit(new Values(record), record.timestamp())
-    )
+//    val records =
+//      consumer.poll(1000)
+//
+//    records.asScala.foreach(
+//      record =>
+//        _collector.emit(new Values(record), record.timestamp())
+//    )
     //    }
 
   }

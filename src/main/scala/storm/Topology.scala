@@ -1,13 +1,10 @@
 package storm
 
-import org.apache.storm.generated.StormTopology
 import org.apache.storm.topology.TopologyBuilder
-import org.apache.storm.topology.base.BaseWindowedBolt.Duration
 import org.apache.storm.tuple.Fields
-import org.apache.storm.utils.Utils
+import org.apache.storm.{Config, LocalCluster, StormSubmitter}
 import storm.Bolt._
 import storm.Spout.SimpleSpout
-import org.apache.storm.{Config, LocalCluster, StormSubmitter}
 
 
 object Topology {
@@ -17,6 +14,7 @@ object Topology {
     val config = new Config
     config.setNumWorkers(3)
     config.setMessageTimeoutSecs(5)
+    config.setDebug(false)
 
     val builder: TopologyBuilder = new TopologyBuilder
 
@@ -40,7 +38,7 @@ object Topology {
 
     builder.setBolt("hourlyCount", new WindowCountBolt().withSlidingWindow(
       Bolt.Config.hourlyCountWindowSize, Bolt.Config.hourlyCountWindowSlide))
-      .setNumTasks(1)
+      .setNumTasks(3)
       .allGrouping("metronome", Metronome.S_METRONOME_HOURLY)
       .fieldsGrouping("filter", new Fields("post_commented"))
 
@@ -49,7 +47,7 @@ object Topology {
       .fieldsGrouping("hourlyCount", new Fields("post_commented"))
 
     builder.setBolt("hourlyGlobalRank", new GlobalRank)
-      .setNumTasks(3)
+      .setNumTasks(1)
       .shuffleGrouping("hourlyPartialRank")
 
     /*
@@ -58,7 +56,7 @@ object Topology {
 
     builder.setBolt("dailyCount", new WindowCountBolt().withSlidingWindow(
       Bolt.Config.dailyCountWindowSize, Bolt.Config.dailyCountWindowSlide))
-      .setNumTasks(13)
+      .setNumTasks(3)
       .allGrouping("metronome", Metronome.S_METRONOME_DAiLY)
       .fieldsGrouping("hourlyCount", new Fields("post_commented"))
 
@@ -76,7 +74,7 @@ object Topology {
 
     builder.setBolt("weeklyCount", new WindowCountBolt().withSlidingWindow(
       Bolt.Config.weeklyCountWindowSize, Bolt.Config.weeklyCountWindowSlide))
-      .setNumTasks(13)
+      .setNumTasks(3)
       .allGrouping("metronome", Metronome.S_METRONOME_WEEKLY)
       .fieldsGrouping("dailyCount", new Fields("post_commented"))
 
@@ -89,15 +87,14 @@ object Topology {
       .shuffleGrouping("weeklyPartialRank")
 
 
-
     /*
       Collect the output
      */
     builder.setBolt("printer", new CollectorBolt())
       .setNumTasks(1)
       .shuffleGrouping("hourlyGlobalRank")
-//      .shuffleGrouping("dailyGlobalRank")
-//      .shuffleGrouping("weeklyGlobalRank")
+      .shuffleGrouping("dailyGlobalRank")
+      .shuffleGrouping("weeklyGlobalRank")
 
 
     /*

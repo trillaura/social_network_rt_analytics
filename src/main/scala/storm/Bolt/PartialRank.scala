@@ -34,7 +34,7 @@ class PartialRank extends BaseRichBolt {
     if (timestamp.toLong > lastWindow)
       rankingBoard.clear()
 
-    rankingBoard.insertScore(postID, count.toInt)
+    rankingBoard.incrementScoreBy(postID, count.toInt)
     if (rankingBoard.rankHasChanged()) {
       val topk: List[RankElement[String]] = rankingBoard.topK()
 
