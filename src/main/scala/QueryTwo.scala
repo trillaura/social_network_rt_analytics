@@ -9,7 +9,7 @@ import utils.Parser
 import utils.flink.CommentsAvroDeserializationSchema
 import java.util.Properties
 
-import flink_operators.{GlobalRanker, PartialRanker, SimpleScoreAggregator}
+import flink_operators.{GlobalRanker, IncrementalRankMerger, PartialRanker, SimpleScoreAggregator}
 import utils.ranking._
 
 
@@ -50,37 +50,28 @@ object QueryTwo {
       .assignAscendingTimestamps( _.timestamp.getMillis )
       .map(postComment => (postComment.parentID, SimpleScore(1)))
       .keyBy(_._1)
-      .window(SlidingEventTimeWindows.of(Time.hours(1),Time.minutes(30)))
+      .window(TumblingEventTimeWindows.of(Time.hours(1))) //,Time.minutes(30)))
       .aggregate(new SimpleScoreAggregator,new PartialRanker)
-      .setParallelism(2)
+      .setParallelism(1)
       .process(new GlobalRanker)
       .setParallelism(1)
 
 
-
-    hourlyResults.writeAsText("results/q2-hourly")
+    hourlyResults.writeAsText("results/q2-hourly-p")
 
     val dailyResults = hourlyResults
       .assignAscendingTimestamps(res => Parser.millisFromStringDate(res.timestamp))
-      .windowAll(SlidingEventTimeWindows.of(Time.hours(24), Time.hours(1) ))
-      .reduce(_ mergeRank _)
-      /*.keyBy(_.timestamp)
-      .window(SlidingEventTimeWindows.of(Time.hours(24), Time.hours(1)))
-      .reduce(new RankingResultsReducer, new PartialRankingMerger)
-      .setParallelism(2)
-      .process(new MergeRank) */
+      .windowAll(TumblingEventTimeWindows.of(Time.hours(24))) //, Time.hours(1) ))
+      .process(new IncrementalRankMerger)
 
-
-
-    dailyResults.writeAsText("results/q2-daily")
-
+    dailyResults.writeAsText("results/q2-daily-p")
 
     val weeklyResults = dailyResults
       .assignAscendingTimestamps(res => Parser.millisFromStringDate(res.timestamp))
-      .windowAll(SlidingEventTimeWindows.of(Time.days(7),Time.days(1)))
-      .reduce(_ mergeRank _)
+      .windowAll(TumblingEventTimeWindows.of(Time.days(7)))
+      .process(new IncrementalRankMerger)
 
-    weeklyResults.writeAsText("results/q2-weekly")
+    weeklyResults.writeAsText("results/q2-weekly-p")
 
   }
 
@@ -92,3 +83,6 @@ object QueryTwo {
     println("Query 2 Execution took " + executingResults.getNetRuntime(TimeUnit.SECONDS) + " seconds")
   }
 }
+
+
+

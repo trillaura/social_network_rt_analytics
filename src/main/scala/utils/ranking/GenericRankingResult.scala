@@ -2,6 +2,7 @@ package utils.ranking
 
 import utils.Parser
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /**
@@ -51,9 +52,57 @@ class GenericRankingResult[A](startTime: String, elements : List[GenericRankElem
                                  finalK : Int): List[GenericRankElement[A]] = {
 
     var listBuffer: ListBuffer[GenericRankElement[A]] = ListBuffer()
+
     this.rankElements.foreach(el => listBuffer += el)
     otherRankingResult.rankElements.foreach(el => listBuffer += el)
     listBuffer.distinct.sortWith(_ >= _).slice(0, finalK).toList
+
+    /*rankElements.foreach(el1 => {
+      otherRankingResult.rankElements.foreach(el2 => {
+
+      })
+    }) */
+
+  }
+
+  def incrementalMerge(otherRankingResult: GenericRankingResult[A]) : GenericRankingResult[A] = {
+
+    val thisMillis = Parser.millisFromStringDate(this.timestamp)
+    val thatMillis = Parser.millisFromStringDate(otherRankingResult.timestamp)
+
+    val finalK = if(this.K < otherRankingResult.K)  this.K  else otherRankingResult.K
+    val finalTimestamp = if(thisMillis != thatMillis && thisMillis > thatMillis) otherRankingResult.timestamp else this.timestamp
+
+
+    var set : mutable.Set[A] = mutable.Set[A]()
+    val distinctThis = this.rankElements.distinct
+    distinctThis.foreach(el => set.add(el.id))
+    val distinctThat = otherRankingResult.rankElements.distinct
+    distinctThat.foreach(el => set.add(el.id))
+
+    var finalElements : ListBuffer[GenericRankElement[A]] = ListBuffer()
+    var scoreSum : Score = null
+    for(id <- set){
+      scoreSum = null
+      distinctThis.filter(_.id == id).foreach(el => {
+        if(scoreSum == null){
+          scoreSum = el.score
+        } else {
+          scoreSum = scoreSum.add(el.score)
+        }
+      })
+      distinctThat.filter(_.id == id).foreach(el => {
+        if(scoreSum == null){
+          scoreSum = el.score
+        } else {
+          scoreSum = scoreSum.add(el.score)
+        }
+      })
+      finalElements += GenericRankElement[A](id,scoreSum)
+    }
+
+    finalElements = finalElements.sortWith(_ >= _).slice(0, finalK)
+    new GenericRankingResult[A](finalTimestamp, finalElements.toList, finalK)
   }
 
   override def toString = s"($timestamp, $rankElements, $K)"
