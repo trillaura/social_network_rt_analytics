@@ -9,7 +9,6 @@ import org.apache.storm.topology.base.BaseRichBolt
 import org.apache.storm.tuple.{Fields, Tuple, Values}
 import org.joda.time.{DateTime, DateTimeZone}
 import storm.utils.Window
-import utils.Parser
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -51,7 +50,8 @@ class WindowCountBolt extends BaseRichBolt {
 
   override def execute(input: Tuple): Unit = {
 
-    if (input.getSourceStreamId.equals("sMetronome")) {
+    val source = input.getSourceStreamId
+    if (source.equals("sMetronome")) {
       handleMetronomeMessage(input)
     } else {
       handlePostTuple(input)
@@ -60,8 +60,7 @@ class WindowCountBolt extends BaseRichBolt {
   }
 
   def handleMetronomeMessage(tuple: Tuple): Unit = {
-    val timestamp: String = tuple.getStringByField("ts")
-    val ts: Long = Parser.convertToDateTime(timestamp).getMillis
+    val ts: Long = tuple.getStringByField("ts").toLong
 
     val windowSlide: Long = windowConfiguration(Config.TOPOLOGY_BOLTS_SLIDING_INTERVAL_DURATION_MS) // slide interval in ms
     val currentTime: Long = roundToCompletedMinute(ts)
@@ -78,17 +77,16 @@ class WindowCountBolt extends BaseRichBolt {
         val w: Window = windowPerPost.get(postID)
         w.moveForward(frameToSlide)
 
-        val count: String = w.estimateTotal().toString
-        if (w.estimateTotal() == 0) {
+        val estimateTotal: Int = w.estimateTotal()
+        if (estimateTotal == 0) {
           expired.add(postID)
         }
 
         val values: Values = new Values()
         values.add(ts.toString)
         values.add(postID)
-        values.add(count)
+        values.add(estimateTotal.toString)
         values.add(windowStart.toString)
-
 
         _collector.emit(values)
       }
@@ -105,15 +103,14 @@ class WindowCountBolt extends BaseRichBolt {
   }
 
   def handlePostTuple(tuple: Tuple): Unit = {
-    val timestamp: String = tuple.getStringByField("ts")
-    val ts: Long = Parser.convertToDateTime(timestamp).getMillis
+    val ts: Long = tuple.getStringByField("ts").toLong
     val id: String = tuple.getStringByField("post_commented")
     val count: Int = tuple.getStringByField("count").toInt
 
     val windowSlide: Long = windowConfiguration(Config.TOPOLOGY_BOLTS_SLIDING_INTERVAL_DURATION_MS) // slide interval in ms
-    val currentTime: Long = roundToCompletedMinute(ts)
+    //    val currentTime: Long = roundToCompletedMinute(ts)
 
-    val elapsed: Long = currentTime - windowStart // elapsed time from last frame in ms
+    val elapsed: Long = ts - windowStart // elapsed time from last frame in ms
     val frameToSlide = (elapsed / windowSlide).toInt // forward window of fromToSlide nslot
 
     if (frameToSlide > 0) {
@@ -127,14 +124,14 @@ class WindowCountBolt extends BaseRichBolt {
         w.moveForward(frameToSlide)
 
         if (postID != id) {
-          val count: String = w.estimateTotal().toString
+          val estimateTotal = w.estimateTotal()
           if (w.estimateTotal() == 0) {
             expired.add(postID)
           }
           val values: Values = new Values()
           values.add(ts.toString)
           values.add(postID)
-          values.add(count)
+          values.add(w.estimateTotal().toString)
           values.add(windowStart.toString)
 
           _collector.emit(values)
@@ -162,14 +159,14 @@ class WindowCountBolt extends BaseRichBolt {
         w.increment(count)
       }
     } else {
-      w.increment()
+      w.increment(count)
     }
 
-//    val value = w.computeTotal
+    //    val total = w.computeTotal
     //    val values: Values = new Values()
     //    values.add(ts.toString)
     //    values.add(id)
-    //    values.add(value.toString)
+    //    values.add(total.toString)
     //    values.add(windowStart.toString)
     //
     //    _collector.emit(values)
@@ -194,8 +191,9 @@ class WindowCountBolt extends BaseRichBolt {
     val date = new DateTime(timestamp).withZone(DateTimeZone.UTC)
     val windowLength = windowConfiguration(Config.TOPOLOGY_BOLTS_WINDOW_SIZE_MS)
 
-    if (windowLength == Config.dailyCountWindowSize && date.getMinuteOfHour == 0 ||
-      windowLength == Config.weeklyCountWindowSize && date.getHourOfDay == 0) return true
+    if ((windowLength == Config.dailyCountWindowSize && date.getMinuteOfHour == 0) || (windowLength == Config.weeklyCountWindowSize && date.getHourOfDay == 0))
+      if (windowLength == Config.weeklyCountWindowSize)
+        return true
 
 
     false

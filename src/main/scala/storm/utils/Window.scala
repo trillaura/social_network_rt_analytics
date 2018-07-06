@@ -2,7 +2,7 @@ package storm.utils
 
 class Window(size: Int) {
 
-  private val timeFrames = new Array[Int](size)
+  val timeFrames = new Array[Int](size)
   private var headSlot = 0
   private var tailSlot = slotAfter(headSlot)
 

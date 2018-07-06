@@ -7,7 +7,7 @@ import org.apache.storm.task.{OutputCollector, TopologyContext}
 import org.apache.storm.topology.OutputFieldsDeclarer
 import org.apache.storm.topology.base.BaseRichBolt
 import org.apache.storm.tuple.{Fields, Tuple, Values}
-import utils.ranking.{RankElement, RankingBoard, RankingResult}
+import utils.ranking.{RankElement, RankingBoard}
 
 class PartialRank extends BaseRichBolt {
 
@@ -15,6 +15,7 @@ class PartialRank extends BaseRichBolt {
   var _collector: OutputCollector = _
 
   val rankingBoard = new RankingBoard[String]()
+  val lastWindow: Long = 0
 
   override def declareOutputFields(declarer: OutputFieldsDeclarer): Unit = {
     declarer.declare(new Fields("timestamp", "partialRanking"))
@@ -30,7 +31,10 @@ class PartialRank extends BaseRichBolt {
     val postID: String = input.getStringByField("post_commented")
     val count: String = input.getStringByField("count")
 
-    rankingBoard.updateTop(postID, count.toInt)
+    if (timestamp.toLong > lastWindow)
+      rankingBoard.clear()
+
+    rankingBoard.insertScore(postID, count.toInt)
     if (rankingBoard.rankHasChanged()) {
       val topk: List[RankElement[String]] = rankingBoard.topK()
 

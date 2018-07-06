@@ -34,26 +34,68 @@ object Topology {
       .setNumTasks(1)
       .shuffleGrouping("filter")
 
-    builder.setBolt("hourlyCount", new WindowCountBolt().withSlidingWindow(
-      Bolt.Config.dailyCountWindowSize,  60 * 60 * 1000))
-      .setNumTasks(3)
-      .fieldsGrouping("filter", new Fields("post_commented"))
-      .allGrouping("metronome", "sMetronome")
+    /*
+      HOURLY STATISTICS
+     */
 
-    builder.setBolt("partialRank", new PartialRank)
+    builder.setBolt("hourlyCount", new WindowCountBolt().withSlidingWindow(
+      Bolt.Config.hourlyCountWindowSize, 30 * 60 * 1000))
+      .setNumTasks(1)
+      .allGrouping("metronome", "sMetronome")
+      .fieldsGrouping("filter", new Fields("post_commented"))
+
+    builder.setBolt("hourlyPartialRank", new PartialRank)
       .setNumTasks(3)
       .fieldsGrouping("hourlyCount", new Fields("post_commented"))
 
-    builder.setBolt("globalRank", new GlobalRank)
+    builder.setBolt("hourlyGlobalRank", new GlobalRank)
+      .setNumTasks(3)
+      .shuffleGrouping("hourlyPartialRank")
+
+    /*
+      DAILY STATISTICS
+     */
+
+    builder.setBolt("dailyCount", new WindowCountBolt().withSlidingWindow(
+      Bolt.Config.dailyCountWindowSize, 60 * 60 * 1000))
+      .setNumTasks(13)
+      .allGrouping("metronome", "sMetronome")
+      .fieldsGrouping("hourlyCount", new Fields("post_commented"))
+
+    builder.setBolt("dailyPartialRank", new PartialRank)
+      .setNumTasks(3)
+      .fieldsGrouping("dailyCount", new Fields("post_commented"))
+
+    builder.setBolt("dailyGlobalRank", new GlobalRank)
       .setNumTasks(1)
-      .shuffleGrouping("partialRank")
+      .shuffleGrouping("dailyPartialRank")
+
+    /*
+      WEEKLY STATISTICS
+     */
+
+    builder.setBolt("weeklyCount", new WindowCountBolt().withSlidingWindow(
+      Bolt.Config.weeklyCountWindowSize, 24 * 60 * 60 * 1000))
+      .setNumTasks(13)
+      .allGrouping("metronome", "sMetronome")
+      .fieldsGrouping("dailyCount", new Fields("post_commented"))
+
+    builder.setBolt("weeklyPartialRank", new PartialRank)
+      .setNumTasks(3)
+      .fieldsGrouping("weeklyCount", new Fields("post_commented"))
+
+    builder.setBolt("weeklyGlobalRank", new GlobalRank)
+      .setNumTasks(1)
+      .shuffleGrouping("weeklyPartialRank")
+
+
+
     /*
       Collect the output
      */
     builder.setBolt("printer", new CollectorBolt())
       .setNumTasks(1)
-      .shuffleGrouping("globalRank")
-    //      .shuffleGrouping("dailyGlobalRank")
+      .shuffleGrouping("hourlyGlobalRank")
     //      .shuffleGrouping("dailyGlobalRank")
     //      .shuffleGrouping("weeklyGlobalRank")
 

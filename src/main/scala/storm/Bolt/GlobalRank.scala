@@ -27,13 +27,13 @@ class GlobalRank extends BaseRichBolt {
   }
 
   override def execute(input: Tuple): Unit = {
-    val partialRabking = input.getValueByField("partialRanking").asInstanceOf[List[RankElement[String]]]
+    val partialRanking = input.getValueByField("partialRanking").asInstanceOf[List[RankElement[String]]]
     val timestamp = input.getStringByField("timestamp")
 
-    val date : String = Parser.convertToDateTime(timestamp.toLong).toString()
-    val rankResult = new RankingResult[String](date, partialRabking, 10)
+    val date: String = Parser.convertToDateTime(timestamp.toLong).toString()
+    val rankResult = new RankingResult[String](date, partialRanking, 10)
 
-    if (ranking == null) {
+    if (ranking == null || ranking.timestamp < rankResult.timestamp) {
       ranking = rankResult
     } else {
       ranking = ranking.mergeRank(rankResult)

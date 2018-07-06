@@ -6,7 +6,6 @@ import org.apache.storm.task.{OutputCollector, TopologyContext}
 import org.apache.storm.topology.OutputFieldsDeclarer
 import org.apache.storm.topology.base.BaseRichBolt
 import org.apache.storm.tuple.{Fields, Tuple, Values}
-import org.joda.time.DateTime
 import utils.Parser
 
 class Filtering extends BaseRichBolt {
@@ -29,10 +28,10 @@ class Filtering extends BaseRichBolt {
       return
     }
     val dateTime = input.getStringByField("ts")
-//    val timestamp: Long = Parser.convertToDateTime(dateTime).getMillis
+    val timestamp: Long = Parser.convertToDateTime(dateTime).getMillis
 
     val values = new Values()
-    values.add(dateTime)
+    values.add(timestamp.toString)
     values.add(postID)
     values.add("1")
 

@@ -1,20 +1,18 @@
 package storm.Bolt
 
 import java.util
+import java.util.{Calendar, Date, GregorianCalendar}
 
 import org.apache.storm.task.{OutputCollector, TopologyContext}
 import org.apache.storm.topology.OutputFieldsDeclarer
 import org.apache.storm.topology.base.BaseRichBolt
 import org.apache.storm.tuple.{Fields, Tuple, Values}
-import java.util.{Calendar, Date, GregorianCalendar}
-
-import utils.Parser
 
 class Metronome extends BaseRichBolt {
   private var _collector: OutputCollector = _
   private var currentTime: Long = 0
 
-  val S_METRONOME = "sMetronome"
+  var S_METRONOME = "sMetronome"
 
 
   override def declareOutputFields(declarer: OutputFieldsDeclarer): Unit = {
@@ -28,8 +26,7 @@ class Metronome extends BaseRichBolt {
     val ts: String = input.getStringByField("ts")
     val postID: String = input.getStringByField("post_commented")
 
-    val timestamp: Long = Parser.convertToDateTime(ts).getMillis
-    val time: Long = roundToCompletedMinute(timestamp)
+    val time: Long = roundToCompletedMinute(ts.toLong)
 
     // Time must go forward
     if (currentTime < time) {
@@ -51,6 +48,7 @@ class Metronome extends BaseRichBolt {
 
 
   private def roundToCompletedMinute(timestamp: Long) = {
+
     val d = new Date(timestamp)
     val date = new GregorianCalendar
     date.setTime(d)
