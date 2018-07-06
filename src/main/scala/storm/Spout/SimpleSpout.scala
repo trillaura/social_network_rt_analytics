@@ -30,20 +30,22 @@ class SimpleSpout extends BaseRichSpout {
   }
 
   override def nextTuple(): Unit = {
-        for (line <- Source.fromFile(filename).getLines()) {
-          _collector.emit(new Values(line))
-        }
+
+    //        for (line <- Source.fromFile(filename).getLines()) {
+    //          _collector.emit(new Values(line))
+    //        }
 
 
-//    val records =
-//      consumer.poll(1000)
-//
-//    records.asScala.foreach(
-//      record => {
-//        val objMapper = new ObjectMapper()
-//        _collector.emit(new Values(objMapper.writeValueAsBytes(record.value)), record.timestamp())
-//      }
-//    )
+    // read from kafka
+    val records =
+      consumer.poll(1000)
+
+    records.asScala.foreach(
+      record => {
+        val objMapper = new ObjectMapper()
+        _collector.emit(new Values(objMapper.writeValueAsBytes(record.value)), record.timestamp())
+      }
+    )
   }
 
   override def declareOutputFields(declarer: OutputFieldsDeclarer): Unit = {

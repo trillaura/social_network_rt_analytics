@@ -29,13 +29,6 @@ services:
         volumes:
             - ./data:/data
 
-    zookeeper:
-        image: zookeeper
-        container_name: zookeeper
-        restart: always
-        ports:
-             - "2181:2181"
-
     storm-ui:
         image: storm:latest
         container_name: storm-ui
@@ -85,3 +78,28 @@ services:
             - storm-nimbus
             - zookeeper
         restart: always
+
+    zookeeper:
+        image: zookeeper
+        container_name: zookeeper
+        restart: always
+        ports:
+               - "2181:2181"
+               - "2888:2888"
+               - "3888:3888"
+        tty: false
+        stdin_open: false
+
+    kafka0:
+        image: matnar/kafka
+        container_name: kafka0
+        depends_on:
+          - zookeeper
+        links:
+          - zookeeper
+        ports:
+          - "9092:9092"
+        environment:
+          - BROKER_ID=0
+        stdin_open: true
+        tty: true
