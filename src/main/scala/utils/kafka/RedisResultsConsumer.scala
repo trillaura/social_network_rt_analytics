@@ -21,6 +21,8 @@ class RedisResultsConsumer(i: Int, t: String) extends Runnable {
 
     subscribeToTopic()
 
+    println("Consumer "+ id +" running...")
+
     while (running) {
 
       Thread.sleep(1000)

@@ -4,10 +4,10 @@ import org.joda.time.format.DateTimeFormat
 
 object Configuration {
 
-  val REDIS_HOST: String = "localhost"
-  val REDIS_PORT: Int = 6379
+  var REDIS_HOST: String = "localhost"
+  var REDIS_PORT: Int = 6379
 
-  val STATE_STORE_NAME: String = "from-beginning-counters"
+  lazy val STATE_STORE_NAME: String = "from-beginning-counters"
 
   val TIMESTAMP_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
   private lazy val dateFormatter = DateTimeFormat.forPattern(TIMESTAMP_FORMAT)
@@ -15,8 +15,8 @@ object Configuration {
   val APP_ID: String = "social-network-analysis-app"
   val CLIENT_ID: String = "social-network-analysis-app-client"
 
-  val BOOTSTRAP_SERVERS: String = "localhost:9092,localhost:9093,localhost:9094"
-  val ZOOKEEPER_SERVERS: String = "localhost:2181,localhost:2888,localhost:3888"
+  var BOOTSTRAP_SERVERS: String = "localhost:9092,localhost:9093,localhost:9094"
+  var ZOOKEEPER_SERVERS: String = "localhost:2181,localhost:2888,localhost:3888"
 
   val DATASET_FRIENDSHIPS: String = "dataset/friendships.dat"
   val DATASET_POSTS: String = "dataset/posts.dat"

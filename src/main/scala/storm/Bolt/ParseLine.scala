@@ -26,8 +26,8 @@ class ParseLine extends BaseRichBolt {
 //      KafkaAvroParser.fromByteArrayToCommentRecord(input.getValueByField("line").asInstanceOf[Array[Byte]])
 //
 //    val values = new Values()
-//    values.add(record.get("ts"))
-//    values.add(record.get("comment_id"))
+//    values.add(record.get("ts").asInstanceOf[scala.Long])
+//    values.add(record.get("comment_id").asInstanceOf[scala.Long])
 //    values.add(record.get("user_id"))
 //    values.add(record.get("comment"))
 //    values.add(record.get("user"))

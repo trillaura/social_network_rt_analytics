@@ -4,8 +4,7 @@ import utils.kafka.RedisResultsConsumer
 
 object RedisConsumerLauncher {
 
-  def main(args: Array[String]): Unit = {
-
+  def  launch(): Unit = {
     val TOPICS: List[String] = Configuration.OUTPUT_TOPICS
 
     val CONSUMERS_NUM: Int = TOPICS.length
@@ -14,5 +13,9 @@ object RedisConsumerLauncher {
       val c: Thread = new Thread{ new RedisResultsConsumer(i, TOPICS(i)).run()}
       c.start()
     }
+  }
+
+  def main(args: Array[String]): Unit = {
+    launch()
   }
 }
