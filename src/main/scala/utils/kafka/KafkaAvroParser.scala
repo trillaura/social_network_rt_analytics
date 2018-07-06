@@ -1,12 +1,17 @@
 package utils.kafka
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.twitter.bijection.Injection
 import com.twitter.bijection.avro.GenericAvroCodecs
 import org.apache.avro.Schema
+import org.apache.avro.io.JsonDecoder._
 import org.apache.avro.data.TimeConversions
-import org.apache.avro.generic.{GenericData, GenericRecord}
+import org.apache.avro.generic.{GenericData, GenericDatumReader, GenericDatumWriter, GenericRecord}
+import org.apache.avro.io._
+import org.apache.commons.io.output.ByteArrayOutputStream
 import org.joda.time.DateTime
 import utils.Configuration
+import utils.ranking.RankElement
 
 object KafkaAvroParser extends Serializable {
 
@@ -87,12 +92,14 @@ object KafkaAvroParser extends Serializable {
   def fromByteArrayToFriendshipRecord(record: Array[Byte]) : GenericRecord =
     recordInjectionFriendship.invert(record).get
 
-  def fromByteArrayToCommentRecord(record: Array[Byte]) : GenericRecord =
-    recordInjectionComment.invert(record).get
+  def fromByteArrayToCommentRecord(record: Array[Byte]) : GenericRecord = {
+    val objMapper = new ObjectMapper()
+    val value = objMapper.readValue(record, classOf[Array[Byte]])
+    recordInjectionComment.invert(value).get
+  }
 
   def fromByteArrayToPostRecord(record: Array[Byte]) : GenericRecord =
     recordInjectionPost.invert(record).get
-
 
   def fromFriendshipRecordToByteArray(ts: DateTime, user1: Long, user2: Long) : Array[Byte] = {
 
@@ -238,6 +245,32 @@ object KafkaAvroParser extends Serializable {
     avroRecord.put("num_comments_9", num_comments_9)
     avroRecord.put("post_id_10", post_id_10)
     avroRecord.put("num_comments_10", num_comments_10)
+
+    if (schema.equals(schemaCommentResultsH1)) {
+      recordInjectionCommentsResultsH1.apply(avroRecord)
+    } else if (schema.equals(schemaCommentsResultsH24)) {
+      recordInjectionCommentsResultsH24.apply(avroRecord)
+    } else {
+      recordInjectionCommentsResultsD7.apply(avroRecord)
+    }
+  }
+
+  def fromCommentsResultsRecordToByteArray(ts: Long, elements: Array[RankElement[String]], schema: Schema) : Array[Byte] = {
+
+    val avroRecord: GenericData.Record = new GenericData.Record(schema)
+
+    avroRecord.put("ts", ts)
+    for (i <- elements.indices) {
+      avroRecord.put("post_id_" + (i+1).toString, elements(i).id.toLong)
+      avroRecord.put("num_comments_" + (i+1).toString, elements(i).score.toLong)
+    }
+
+    if (elements.length < 10) {
+      for (i <- elements.length to 9) {
+        avroRecord.put("post_id_" + (i+1).toString, 0l)
+        avroRecord.put("num_comments_" + (i+1).toString, 0l)
+      }
+    }
 
     if (schema.equals(schemaCommentResultsH1)) {
       recordInjectionCommentsResultsH1.apply(avroRecord)

@@ -91,10 +91,18 @@ object ConsumerManager {
     consumerLongByteArray.subscribe(List(topic).asJava)
 
   def getDefaultConsumerStringByteArray : Consumer[String, Array[Byte]] =
-    this.consumerStringByteArray
+    consumerStringByteArray
 
   def getDefaultConsumerLongByteArray : Consumer[Long, Array[Byte]] =
-    this.consumerLongByteArray
+    consumerLongByteArray
+
+  def createInputConsumer(topic: String) : Consumer[String, Array[Byte]] = {
+
+    val consumer = createConsumerStringByteArray()
+    consumer.subscribe(List(topic).asJavaCollection)
+    consumer.listTopics()
+    consumer
+  }
 
 }
 

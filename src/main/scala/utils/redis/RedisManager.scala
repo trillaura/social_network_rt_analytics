@@ -73,10 +73,16 @@ object RedisManager {
       val res1 = getResultsBySchema(KafkaAvroParser.schemaFriendshipResultsH24.getName)
       val res2 = getResultsBySchema(KafkaAvroParser.schemaFriendshipResultsD7.getName)
       val res3 = getResultsBySchema(KafkaAvroParser.schemaFriendshipResultsAllTime.getName)
+      val res4 = getResultsBySchema(KafkaAvroParser.schemaCommentResultsH1.getName)
+      val res5 = getResultsBySchema(KafkaAvroParser.schemaCommentsResultsH24.getName)
+      val res6 = getResultsBySchema(KafkaAvroParser.schemaCommentsResultsD7.getName)
+      val res7 = getResultsBySchema(KafkaAvroParser.schemaPostsResultsH1.getName)
+      val res8 = getResultsBySchema(KafkaAvroParser.schemaPostsResultsH24.getName)
+      val res9 = getResultsBySchema(KafkaAvroParser.schemaPostsResultsD7.getName)
 
-      res1.foreach(line => ResultsFileWriter.writeLine(line, KafkaAvroParser.schemaFriendshipResultsH24.getName))
-      res2.foreach(line => ResultsFileWriter.writeLine(line, KafkaAvroParser.schemaFriendshipResultsD7.getName))
-      res3.foreach(line => ResultsFileWriter.writeLine(line, KafkaAvroParser.schemaFriendshipResultsAllTime.getName))
+//      res1.foreach(line => ResultsFileWriter.writeLine(line, KafkaAvroParser.schemaFriendshipResultsH24.getName))
+//      res2.foreach(line => ResultsFileWriter.writeLine(line, KafkaAvroParser.schemaFriendshipResultsD7.getName))
+//      res3.foreach(line => ResultsFileWriter.writeLine(line, KafkaAvroParser.schemaFriendshipResultsAllTime.getName))
 
       Thread.sleep(10000)
     }

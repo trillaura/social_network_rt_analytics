@@ -2,6 +2,7 @@ package storm.Spout
 
 import java.util
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.consumer.Consumer
 import org.apache.storm.spout.SpoutOutputCollector
@@ -29,21 +30,20 @@ class SimpleSpout extends BaseRichSpout {
   }
 
   override def nextTuple(): Unit = {
-    for (line <- Source.fromFile(filename).getLines()) {
-      _collector.emit(new Values(line))
-    }
+        for (line <- Source.fromFile(filename).getLines()) {
+          _collector.emit(new Values(line))
+        }
 
-    //    while (true) {
 
 //    val records =
 //      consumer.poll(1000)
 //
 //    records.asScala.foreach(
-//      record =>
-//        _collector.emit(new Values(record), record.timestamp())
+//      record => {
+//        val objMapper = new ObjectMapper()
+//        _collector.emit(new Values(objMapper.writeValueAsBytes(record.value)), record.timestamp())
+//      }
 //    )
-    //    }
-
   }
 
   override def declareOutputFields(declarer: OutputFieldsDeclarer): Unit = {
@@ -56,7 +56,8 @@ class SimpleSpout extends BaseRichSpout {
 
 
   def prepareConsumer(): Unit = {
-    consumer = ConsumerManager.getDefaultConsumerStringByteArray
-    ConsumerManager.subscribeConsumerStringByteArrayToTopic(Configuration.COMMENTS_INPUT_TOPIC)
+    consumer = ConsumerManager.createInputConsumer(Configuration.COMMENTS_INPUT_TOPIC)
   }
 }
+
+
