@@ -1,10 +1,17 @@
 package storm
 
+import java.util.Properties
+
+import org.apache.storm.kafka.bolt.KafkaBolt
+import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper
+import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector
+import org.apache.storm.kafka.spout._
 import org.apache.storm.topology.TopologyBuilder
 import org.apache.storm.tuple.Fields
 import org.apache.storm.{Config, LocalCluster, StormSubmitter}
 import storm.Bolt._
-import storm.Spout.SimpleSpout
+import storm.Spout.StormKafkaSpoutConfig
+import utils.Configuration
 
 
 /**
@@ -21,7 +28,7 @@ object Topology {
 
     val builder: TopologyBuilder = new TopologyBuilder
 
-    builder.setSpout("spout", new SimpleSpout)
+    builder.setSpout("spout",     new KafkaSpout(StormKafkaSpoutConfig.getSpoutConfig))
 
     builder.setBolt("parser", new ParseLine())
       .setNumTasks(3)
@@ -40,7 +47,7 @@ object Topology {
      */
 
     builder.setBolt("hourlyCount", new WindowCountBolt().withSlidingWindow(
-      Bolt.Config.hourlyCountWindowSize, Bolt.Config.hourlyCountWindowSlide))
+      Configuration.hourlyCountWindowSize, Configuration.hourlyCountWindowSlide))
       .setNumTasks(3)
       .allGrouping("metronome", Metronome.S_METRONOME_HOURLY)
       .fieldsGrouping("filter", new Fields("post_commented"))
@@ -58,7 +65,7 @@ object Topology {
      */
 
     builder.setBolt("dailyCount", new WindowCountBolt().withSlidingWindow(
-      Bolt.Config.dailyCountWindowSize, Bolt.Config.dailyCountWindowSlide))
+      Configuration.dailyCountWindowSize, Configuration.dailyCountWindowSlide))
       .setNumTasks(3)
       .allGrouping("metronome", Metronome.S_METRONOME_DAiLY)
       .fieldsGrouping("hourlyCount", new Fields("post_commented"))
@@ -76,7 +83,7 @@ object Topology {
      */
 
     builder.setBolt("weeklyCount", new WindowCountBolt().withSlidingWindow(
-      Bolt.Config.weeklyCountWindowSize, Bolt.Config.weeklyCountWindowSlide))
+      Configuration.weeklyCountWindowSize, Configuration.weeklyCountWindowSlide))
       .setNumTasks(3)
       .allGrouping("metronome", Metronome.S_METRONOME_WEEKLY)
       .fieldsGrouping("dailyCount", new Fields("post_commented"))
@@ -92,13 +99,16 @@ object Topology {
 
     /*
       Collect the output
-     */
+    */
     builder.setBolt("printer", new CollectorBolt())
       .setNumTasks(1)
       .shuffleGrouping("hourlyGlobalRank")
       .shuffleGrouping("dailyGlobalRank")
       .shuffleGrouping("weeklyGlobalRank")
 
+    builder.setBolt("writer", StormKafkaBoltConfig.getKafkaBoltConfig)
+      .setNumTasks(1)
+      .shuffleGrouping("printer")
 
     /*
       Create topology and submit it

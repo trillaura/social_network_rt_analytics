@@ -48,7 +48,9 @@ lazy val social_rt_analytics = (project in file("."))
     ),
 
     libraryDependencies ++= flinkDependencies,
-    libraryDependencies += "org.apache.storm" % "storm-core" % "1.2.2" exclude("junit", "junit")
+    libraryDependencies += "org.apache.storm" % "storm-core" % "1.2.2" exclude("junit", "junit"),
+    libraryDependencies += "org.apache.storm" % "storm-kafka-client" % "1.2.2", // % "provided"
+    libraryDependencies += "org.apache.storm" % "storm-kafka" % "1.2.2" // % "provided"
   )
 
 

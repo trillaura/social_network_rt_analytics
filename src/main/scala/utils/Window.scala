@@ -1,4 +1,4 @@
-package storm.utils
+package utils
 
 class Window(size: Int) {
 

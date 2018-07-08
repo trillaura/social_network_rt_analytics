@@ -1,14 +1,10 @@
 package utils.kafka
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.twitter.bijection.Injection
 import com.twitter.bijection.avro.GenericAvroCodecs
 import org.apache.avro.Schema
-import org.apache.avro.io.JsonDecoder._
 import org.apache.avro.data.TimeConversions
-import org.apache.avro.generic.{GenericData, GenericDatumReader, GenericDatumWriter, GenericRecord}
-import org.apache.avro.io._
-import org.apache.commons.io.output.ByteArrayOutputStream
+import org.apache.avro.generic.{GenericData, GenericRecord}
 import org.joda.time.DateTime
 import utils.Configuration
 import utils.ranking.{GenericRankingResult, RankElement}
@@ -92,11 +88,9 @@ object KafkaAvroParser extends Serializable {
   def fromByteArrayToFriendshipRecord(record: Array[Byte]) : GenericRecord =
     recordInjectionFriendship.invert(record).get
 
-  def fromByteArrayToCommentRecord(record: Array[Byte]) : GenericRecord = {
-    val objMapper = new ObjectMapper()
-    val value = objMapper.readValue(record, classOf[Array[Byte]])
-    recordInjectionComment.invert(value).get
-  }
+  def fromByteArrayToCommentRecord(record: Array[Byte]) : GenericRecord =
+    recordInjectionComment.invert(record).get
+
 
   def fromByteArrayToPostRecord(record: Array[Byte]) : GenericRecord =
     recordInjectionPost.invert(record).get

@@ -16,7 +16,6 @@ import utils.ranking.{RankElement, RankingResult}
   */
 class GlobalRank extends BaseRichBolt {
 
-  var gson: Gson = _
   var _collector: OutputCollector = _
 
   var ranking: RankingResult[String] = _
@@ -27,7 +26,6 @@ class GlobalRank extends BaseRichBolt {
 
   override def prepare(stormConf: util.Map[_, _], context: TopologyContext, collector: OutputCollector): Unit = {
     _collector = collector
-    gson = new Gson()
   }
 
   override def execute(input: Tuple): Unit = {

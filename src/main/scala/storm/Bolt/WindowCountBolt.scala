@@ -7,8 +7,7 @@ import org.apache.storm.topology.OutputFieldsDeclarer
 import org.apache.storm.topology.base.BaseRichBolt
 import org.apache.storm.tuple.{Fields, Tuple, Values}
 import org.joda.time.{DateTime, DateTimeZone}
-import storm.utils.Window
-import utils.Parser
+import utils.{Configuration, Window}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -33,8 +32,8 @@ class WindowCountBolt extends BaseRichBolt {
     if (size <= 0) throw new IllegalArgumentException("Window slide must be positive [" + size + "]")
     if (size < slide) throw new IllegalArgumentException("Window slide must be less than [" + size + "]")
 
-    windowConfiguration.put(Config.TOPOLOGY_BOLTS_SLIDING_INTERVAL_DURATION_MS, slide)
-    windowConfiguration.put(Config.TOPOLOGY_BOLTS_WINDOW_SIZE_MS, size)
+    windowConfiguration.put(Configuration.TOPOLOGY_BOLTS_SLIDING_INTERVAL_DURATION_MS, slide)
+    windowConfiguration.put(Configuration.TOPOLOGY_BOLTS_WINDOW_SIZE_MS, size)
 
     val slot = (size / slide).toInt
     if (slot == 0) throw new IllegalArgumentException("Window slide must be multiple of [" + size + "]")
@@ -52,13 +51,13 @@ class WindowCountBolt extends BaseRichBolt {
 
     val source = input.getSourceStreamId
     if (source.equals("sMetronome.hourly") &&
-      windowConfiguration(Config.TOPOLOGY_BOLTS_WINDOW_SIZE_MS) == Config.hourlyCountWindowSize) {
+      windowConfiguration(Configuration.TOPOLOGY_BOLTS_WINDOW_SIZE_MS) == Configuration.hourlyCountWindowSize) {
       handleMetronomeMessage(input)
     } else if (source.equals("sMetronome.daily") &&
-      windowConfiguration(Config.TOPOLOGY_BOLTS_WINDOW_SIZE_MS) == Config.dailyCountWindowSize) {
+      windowConfiguration(Configuration.TOPOLOGY_BOLTS_WINDOW_SIZE_MS) == Configuration.dailyCountWindowSize) {
       handleMetronomeMessage(input)
     } else if (source.equals("sMetronome.weekly") &&
-      windowConfiguration(Config.TOPOLOGY_BOLTS_WINDOW_SIZE_MS) == Config.weeklyCountWindowSize) {
+      windowConfiguration(Configuration.TOPOLOGY_BOLTS_WINDOW_SIZE_MS) == Configuration.weeklyCountWindowSize) {
       handleMetronomeMessage(input)
     } else {
       handlePostTuple(input)
@@ -68,7 +67,7 @@ class WindowCountBolt extends BaseRichBolt {
 
   def handleMetronomeMessage(tuple: Tuple): Unit = {
     val currentTime: Long = tuple.getStringByField("ts").toLong
-    val windowSlide: Long = windowConfiguration(Config.TOPOLOGY_BOLTS_SLIDING_INTERVAL_DURATION_MS) // slide interval in ms
+    val windowSlide: Long = windowConfiguration(Configuration.TOPOLOGY_BOLTS_SLIDING_INTERVAL_DURATION_MS) // slide interval in ms
 
     val elapsed: Long = currentTime - windowStart // elapsed time from last frame in ms
     val frameToSlide = (elapsed / windowSlide).toInt // forward window of fromToSlide nslot
@@ -133,10 +132,10 @@ class WindowCountBolt extends BaseRichBolt {
 
   def isValid(timestamp: Long): Boolean = {
     val date = new DateTime(timestamp).withZone(DateTimeZone.UTC)
-    val windowLength = windowConfiguration(Config.TOPOLOGY_BOLTS_WINDOW_SIZE_MS)
+    val windowLength = windowConfiguration(Configuration.TOPOLOGY_BOLTS_WINDOW_SIZE_MS)
 
-    if ((windowLength == Config.dailyCountWindowSize && date.getMinuteOfHour == 0) || (windowLength == Config.weeklyCountWindowSize && date.getHourOfDay == 0))
-      if (windowLength == Config.weeklyCountWindowSize)
+    if ((windowLength == Configuration.dailyCountWindowSize && date.getMinuteOfHour == 0) || (windowLength == Configuration.weeklyCountWindowSize && date.getHourOfDay == 0))
+      if (windowLength == Configuration.weeklyCountWindowSize)
         return true
 
 

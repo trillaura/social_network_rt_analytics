@@ -6,6 +6,7 @@ import org.apache.storm.task.{OutputCollector, TopologyContext}
 import org.apache.storm.topology.OutputFieldsDeclarer
 import org.apache.storm.topology.base.BaseRichBolt
 import org.apache.storm.tuple.{Fields, Tuple, Values}
+import utils.Configuration
 
 /**
   * Metronome is in charge of beat time in order to communicate the following bolt that is time to emit.
@@ -44,15 +45,15 @@ object Metronome extends BaseRichBolt {
 
     if (elapsed > 0) {
       // Time must go forward
-      if (elapsed > Config.hourlyCountWindowSlide) {
+      if (elapsed > Configuration.hourlyCountWindowSlide) {
         _collector.emit(S_METRONOME_HOURLY, values)
       }
 
-      if (elapsed > Config.dailyCountWindowSlide) {
+      if (elapsed > Configuration.dailyCountWindowSlide) {
         _collector.emit(S_METRONOME_DAiLY, values)
       }
 
-      if (elapsed > Config.weeklyCountWindowSlide) {
+      if (elapsed > Configuration.weeklyCountWindowSlide) {
         _collector.emit(S_METRONOME_WEEKLY, values)
       }
 

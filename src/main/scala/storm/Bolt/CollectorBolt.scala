@@ -2,15 +2,13 @@ package storm.Bolt
 
 import java.util
 
-import com.google.gson.Gson
-import org.apache.kafka.clients.producer.{Producer, ProducerRecord}
 import org.apache.storm.task.{OutputCollector, TopologyContext}
 import org.apache.storm.topology.OutputFieldsDeclarer
 import org.apache.storm.topology.base.BaseRichBolt
-import org.apache.storm.tuple.Tuple
-import utils.{Configuration, Parser, ResultsFileWriter}
-import utils.kafka.{KafkaAvroParser, ProducerManager, StormResultsProducer}
-import utils.ranking.{RankElement, RankingResult}
+import org.apache.storm.tuple.{Fields, Tuple, Values}
+import utils.{Configuration, Parser}
+import utils.kafka.{KafkaAvroParser, StormResultsProducer}
+import utils.ranking.RankElement
 
 
 /**
@@ -29,33 +27,27 @@ class CollectorBolt extends BaseRichBolt {
     val start = input.getStringByField("timestamp")
     val rankElements = ranking.toArray
 
-
-
-    ////    ResultsFileWriter.writeLine(start + " " + rankElements.mkString(" "), "storm")
-    println(start + " " + rankElements.mkString(" "))
+    if (Configuration.DEBUG) { println(start + " " + rankElements.mkString(" ")) }
 
     val timestamp = Parser.convertToDateTime(start).getMillis
 
     val data = KafkaAvroParser.fromCommentsResultsRecordToByteArray(
       timestamp, rankElements, KafkaAvroParser.schemaCommentResultsH1)
 
+    val values = new Values()
+    values.add(timestamp.toString)
+    values.add(data)
 
-    val p: Thread = new Thread {
-      producer.produce(timestamp, data)
-    }
-    p.run()
-    p.start()
-
+    _collector.emit(values)
     _collector.ack(input)
   }
 
   override def declareOutputFields(declarer: OutputFieldsDeclarer): Unit = {
-    // nothing to declare
+    declarer.declare(new Fields("timestamp", "globalRanking"))
   }
 
   override def prepare(stormConf: util.Map[_, _], context: TopologyContext, collector: OutputCollector): Unit = {
     _collector = collector
-    producer = new StormResultsProducer(1, Configuration.COMMENTS_OUTPUT_TOPIC_H1)
   }
 
 }
