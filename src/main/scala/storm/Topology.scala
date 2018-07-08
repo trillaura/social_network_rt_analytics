@@ -42,9 +42,9 @@ object Topology {
       .setNumTasks(1)
       .shuffleGrouping("filter")
 
-    /*
-      HOURLY STATISTICS
-     */
+    // =================== //
+    // HOURLY STATISTICS   //
+    // =================== //
 
     builder.setBolt("hourlyCount", new WindowCountBolt().withSlidingWindow(
       Configuration.hourlyCountWindowSize, Configuration.hourlyCountWindowSlide))
@@ -60,9 +60,9 @@ object Topology {
       .setNumTasks(1)
       .shuffleGrouping("hourlyPartialRank")
 
-    /*
-      DAILY STATISTICS
-     */
+    // =================== //
+    //  DAILY STATISTICS   //
+    // =================== //
 
     builder.setBolt("dailyCount", new WindowCountBolt().withSlidingWindow(
       Configuration.dailyCountWindowSize, Configuration.dailyCountWindowSlide))
@@ -78,9 +78,9 @@ object Topology {
       .setNumTasks(1)
       .shuffleGrouping("dailyPartialRank")
 
-    /*
-      WEEKLY STATISTICS
-     */
+    // =================== //
+    // WEEKLY STATISTICS   //
+    // =================== //
 
     builder.setBolt("weeklyCount", new WindowCountBolt().withSlidingWindow(
       Configuration.weeklyCountWindowSize, Configuration.weeklyCountWindowSlide))
@@ -96,10 +96,10 @@ object Topology {
       .setNumTasks(1)
       .shuffleGrouping("weeklyPartialRank")
 
+    // =================== //
+    //     COLLECTOR       //
+    // =================== //
 
-    /*
-      Collect the output
-    */
     builder.setBolt("printer", new CollectorBolt())
       .setNumTasks(1)
       .shuffleGrouping("hourlyGlobalRank")
@@ -109,10 +109,6 @@ object Topology {
     builder.setBolt("writer", StormKafkaBoltConfig.getKafkaBoltConfig)
       .setNumTasks(1)
       .shuffleGrouping("printer")
-
-    /*
-      Create topology and submit it
-     */
 
     if (args.length == 2) {
 

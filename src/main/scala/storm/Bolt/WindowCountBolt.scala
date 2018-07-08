@@ -50,13 +50,13 @@ class WindowCountBolt extends BaseRichBolt {
   override def execute(input: Tuple): Unit = {
 
     val source = input.getSourceStreamId
-    if (source.equals("sMetronome.hourly") &&
+    if (source.equals(Metronome.S_METRONOME_HOURLY) &&
       windowConfiguration(Configuration.TOPOLOGY_BOLTS_WINDOW_SIZE_MS) == Configuration.hourlyCountWindowSize) {
       handleMetronomeMessage(input)
-    } else if (source.equals("sMetronome.daily") &&
+    } else if (source.equals(Metronome.S_METRONOME_DAiLY) &&
       windowConfiguration(Configuration.TOPOLOGY_BOLTS_WINDOW_SIZE_MS) == Configuration.dailyCountWindowSize) {
       handleMetronomeMessage(input)
-    } else if (source.equals("sMetronome.weekly") &&
+    } else if (source.equals(Metronome.S_METRONOME_WEEKLY) &&
       windowConfiguration(Configuration.TOPOLOGY_BOLTS_WINDOW_SIZE_MS) == Configuration.weeklyCountWindowSize) {
       handleMetronomeMessage(input)
     } else {
