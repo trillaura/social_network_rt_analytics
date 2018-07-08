@@ -1,10 +1,5 @@
 package storm
 
-import java.util.Properties
-
-import org.apache.storm.kafka.bolt.KafkaBolt
-import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper
-import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector
 import org.apache.storm.kafka.spout._
 import org.apache.storm.topology.TopologyBuilder
 import org.apache.storm.tuple.Fields
