@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: jvm
+spec:
+  type: NodePort
+  ports:
+  - port: 8080
+    nodePort: 32080
+    targetPort: 8080
+    protocol: TCP
+  selector:
+    app: jvm
+---
+apiVersion: apps/v1beta2 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: jvm
+spec:
+  selector:
+    matchLabels:
+      app: jvm
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: jvm
+    spec:
+      containers:
+      - image: openjdk:latest
+        name: jvm
+ #       env:
+ #         - name: JAR_URL
+ #           value: https://raw.githubusercontent.com/OviDanielB/app_help/master/backend.jar.gpg
+        command: ["/bin/sh"]
+        args: ["-c", "tail -f /dev/null"]
+ #       args: ["-c", "curl ${JAR_URL} -O;
+ #                     java -jar backend.jar"]
+        ports:
+        - containerPort: 8080
+          name: backend-port

@@ -1,19 +1,32 @@
 package utils.kafka
 
+import java.util.Properties
+
 import org.apache.avro.Schema
 import org.apache.avro.data.TimeConversions
 import org.apache.avro.generic.GenericData
 import org.apache.kafka.clients.producer._
+import org.apache.kafka.common.serialization.{ByteArraySerializer, LongSerializer}
 import utils.{Configuration, Parser}
 
 
-class DataProducer(t: String, f: Int) extends Runnable {
+class DataProducer(t: String, f: Int, bootstrap: String) extends Runnable {
+
+  def this(t: String, f: Int) = this(t,f,"")
 
   GenericData.get.addLogicalTypeConversion(new TimeConversions.TimestampConversion)
 
   val producer_id: String = Configuration.PRODUCER_ID
   val topic: String = t
-  var producer: Producer[Long, Array[Byte]] = ProducerManager.getDefaultProducer
+
+  /* producer properties */
+  val props: Properties  = new Properties()
+  props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, if(bootstrap.isEmpty) Configuration.BOOTSTRAP_SERVERS else bootstrap)
+  props.put(ProducerConfig.CLIENT_ID_CONFIG, Configuration.PRODUCER_ID)
+  props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, new LongSerializer().getClass.getName)
+  props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, new ByteArraySerializer().getClass.getName)
+
+  var producer: Producer[Long, Array[Byte]] = new KafkaProducer[Long, Array[Byte]](props)
 
   val frequency: Int = f
 

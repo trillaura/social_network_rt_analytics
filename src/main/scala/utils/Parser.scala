@@ -1,5 +1,7 @@
 package utils
 
+import java.io.InputStream
+
 import model.{Comment, Post, User, UserConnection}
 import org.apache.avro.generic.GenericRecord
 import org.joda.time.{DateTime, DateTimeZone}
@@ -45,30 +47,48 @@ object Parser {
   def readFriendships(path: String): ListBuffer[UserConnection] = {
 
     var connections: ListBuffer[UserConnection] = ListBuffer()
-    for (l <- Source.fromFile(path).getLines()) {
+    val stream : InputStream = getClass.getResourceAsStream("/" + path)
+    val lines = scala.io.Source.fromInputStream( stream ).getLines
+    for(l <- lines){
       val parsed = parseUserConnection(l)
       connections += parsed.get
     }
+    /*for (l <- Source.fromFile(path).getLines()) {
+      val parsed = parseUserConnection(l)
+      connections += parsed.get
+    } */
     connections
   }
 
   def readComments(path: String): ListBuffer[Comment] = {
 
     var comments: ListBuffer[Comment] = ListBuffer()
-    for (l <- Source.fromFile(path).getLines()) {
+    val stream : InputStream = getClass.getResourceAsStream("/" + path)
+    val lines = scala.io.Source.fromInputStream( stream ).getLines
+    for(l <- lines){
       val parsed = parseComment(l)
       comments += parsed.get
     }
+    /*for (l <- Source.fromFile(path).getLines()) {
+      val parsed = parseComment(l)
+      comments += parsed.get
+    } */
     comments
   }
 
   def readPosts(path: String): ListBuffer[Post] = {
 
     var posts: ListBuffer[Post] = ListBuffer()
-    for (l <- Source.fromFile(path).getLines()) {
+    val stream : InputStream = getClass.getResourceAsStream("/" + path)
+    val lines = scala.io.Source.fromInputStream( stream ).getLines
+    for(l <- lines){
       val parsed = parsePost(l)
       posts += parsed.get
     }
+    /*for (l <- Source.fromFile(path).getLines()) {
+      val parsed = parsePost(l)
+      posts += parsed.get
+    }*/
     posts
   }
 

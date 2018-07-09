@@ -8,20 +8,21 @@ import utils.Configuration
 import scala.collection.JavaConverters._
 
 
-object KafkaManager {
+class KafkaManager(bootstrap: String,zookeeper: String) {
 
   val config: Properties = new Properties
-  config.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, Configuration.BOOTSTRAP_SERVERS)
+  config.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap)//Configuration.BOOTSTRAP_SERVERS)
+  config.put(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG, "100000")
 
   val sessionTimeoutMs: Int = 10 * 1000
   val connectionTimeoutMs: Int = 8 * 1000
 
   val admin: AdminClient = AdminClient.create(config)
 
-  val zkServer: String = Configuration.ZOOKEEPER_SERVERS
+  val zkServer: String = zookeeper//Configuration.ZOOKEEPER_SERVERS
 
   def listTopics(): ListTopicsResult = {
-    val list = admin.listTopics(new ListTopicsOptions().timeoutMs(1000).listInternal(true))
+    val list = admin.listTopics(new ListTopicsOptions().timeoutMs(10000).listInternal(true))
     if (Configuration.DEBUG) { list.names().get().asScala.foreach(t => println(t)) }
     list
   }

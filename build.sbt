@@ -79,4 +79,4 @@ assemblyMergeStrategy in assembly := {
 }
 
 // exclude Scala library from assembly
-assembly / assemblyOption := (assembly / assemblyOption).value.copy(includeScala = false)
+assembly / assemblyOption := (assembly / assemblyOption).value.copy(includeScala = true)

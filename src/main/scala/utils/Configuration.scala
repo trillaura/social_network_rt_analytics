@@ -4,7 +4,7 @@ import org.joda.time.format.DateTimeFormat
 
 object Configuration {
 
-  val DEBUG = true
+  val DEBUG = false
 
   var REDIS_HOST: String = "localhost"
   var REDIS_PORT: Int = 6379
@@ -17,8 +17,8 @@ object Configuration {
   val APP_ID: String = "social-network-analysis-app"
   val CLIENT_ID: String = "social-network-analysis-app-client"
 
-  var BOOTSTRAP_SERVERS: String = "35.204.157.42:30092"//"localhost:9092,localhost:9093,localhost:9094"
-  var ZOOKEEPER_SERVERS: String = "35.204.157.42:30181"//"localhost:2181,localhost:2888,localhost:3888"
+  var BOOTSTRAP_SERVERS: String = "35.204.248.219:30092" //localhost:9092,localhost:9093,localhost:9094"
+  var ZOOKEEPER_SERVERS: String = "35.204.248.219:30182" //localhost:2181,localhost:2888,localhost:3888"
 
   val DATASET_FRIENDSHIPS: String = "dataset/friendships.dat"
   val DATASET_POSTS: String = "dataset/posts.dat"
@@ -36,7 +36,7 @@ object Configuration {
   val POSTS_OUTPUT_TOPIC_7D: String = "posts-d7-stream-output"
   val POSTS_OUTPUT_TOPIC_H1: String = "posts-h1-stream-output"
 
-  val COMMENTS_INPUT_TOPIC: String = "comments-stream-input"
+  val COMMENTS_INPUT_TOPIC: String = "comments-demo" //"comments-stream-input"
   val COMMENTS_OUTPUT_TOPIC_H24: String = "comments-h24-stream-output"
   val COMMENTS_OUTPUT_TOPIC_7D: String = "comments-d7-stream-output"
   val COMMENTS_OUTPUT_TOPIC_H1: String = "comments-h1-stream-output"

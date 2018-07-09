@@ -152,8 +152,10 @@ object QueryTwo {
     val outputPath = params.getRequired("output")
 
 
-    executeTumbling(inputPath, outputPath)
+    //executeTumbling(inputPath, outputPath)
     //executeSliding(inputPath, outputPath)
+
+    stream.map(el => println(el))
 
 
     val executingResults = env.execute()
