@@ -60,14 +60,14 @@ spec:
         - sh
         - -c
         - "exec kafka-server-start.sh /opt/kafka/config/server.properties --override broker.id=${HOSTNAME##*-} \
-          --override listeners=PLAINTEXT://:9093 \
+          --override listeners=PLAINTEXT://9093 \
           --override zookeeper.connect=zk-cs.default.svc.cluster.local:2181 \
           --override log.dir=/var/lib/kafka \
           --override auto.create.topics.enable=true \
           --override auto.leader.rebalance.enable=true \
           --override background.threads=10 \
           --override compression.type=producer \
-          --override delete.topic.enable=false \
+          --override delete.topic.enable=true \
           --override leader.imbalance.check.interval.seconds=300 \
           --override leader.imbalance.per.broker.percentage=10 \
           --override log.flush.interval.messages=9223372036854775807 \
@@ -145,12 +145,13 @@ spec:
           --override replica.fetch.backoff.ms=1000 \
           --override replica.fetch.max.bytes=1048576 \
           --override replica.fetch.response.max.bytes=10485760 \
-          --override reserved.broker.max.id=1000 "
+          --override reserved.broker.max.id=1000 \
+          "
         env:
         - name: KAFKA_HEAP_OPTS
           value : "-Xmx512M -Xms512M"
         - name: KAFKA_OPTS
-          value: "-Dlogging.level=INFO"
+          value: "-Dlogging.level=DEBUG"
         volumeMounts:
         - name: datadir
           mountPath: /var/lib/kafka
