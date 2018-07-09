@@ -18,11 +18,11 @@ spec:
         - name: storm-worker
           image: storm:latest
           ports:
-            - name: 6700
+            - name: w0
               containerPort: 6700
-            - name: 6701
+            - name: w1
               containerPort: 6701
-            - name: 6702
+            - name: w2
               containerPort: 6702
-            - name: 6703
+            - name: w3
               containerPort: 6703
