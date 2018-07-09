@@ -43,7 +43,7 @@ object QueryTwo {
     */
   def executeTumbling(inputPath: String, outputPath : String) : Unit = {
 
-    val hourlyResults =  env.readTextFile(inputPath)
+    val hourlyResults =  stream
       .flatMap {  Parser.parseComment(_)  filter { _.isPostComment() } }
       .assignAscendingTimestamps( _.timestamp.getMillis )
       .map(postComment => (postComment.parentID, SimpleScore(1)))
@@ -81,7 +81,7 @@ object QueryTwo {
   def executeSliding(inputPath: String, outputPath : String) : Unit = {
 
     /* main filtered data to use in different windows */
-    val keyedFilteredData = env.readTextFile(inputPath)
+    val keyedFilteredData = stream
       .flatMap {  Parser.parseComment(_)  filter { _.isPostComment() } }
       .assignAscendingTimestamps( _.timestamp.getMillis )
       .map(postComment => (postComment.parentID, SimpleScore(1)))
@@ -152,10 +152,8 @@ object QueryTwo {
     val outputPath = params.getRequired("output")
 
 
-    //executeTumbling(inputPath, outputPath)
+    executeTumbling(inputPath, outputPath)
     //executeSliding(inputPath, outputPath)
-
-    stream.map(el => println(el))
 
 
     val executingResults = env.execute()

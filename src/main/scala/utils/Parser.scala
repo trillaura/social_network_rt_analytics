@@ -189,6 +189,10 @@ object Parser {
     }
   }
 
+  def parseComment(c: (String,String,String,String,String,String,String)) : Option[Comment] = {
+    parseComment(c._1 + "|" + c._2 + "|" + c._3 + "|" + c._4 + "|" + c._5 + "|" + c._6 + "|" + c._7)
+  }
+
   def parseComment(line: String): Option[Comment] = {
 
     var postComment = true
