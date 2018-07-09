@@ -6,16 +6,17 @@ metadata:
     name: storm-worker
 spec:
   ports:
-    - name: 6700
+    - name: w0
       port: 6700
       targetPort: 6700
-    - name: 6701
+    - name: w1
       port: 6701
       targetPort: 6701
-    - name: 6702
+    - name: w2
       port: 6702
       targetPort: 6702
-    - name: 6703
+    - name: w3
       port: 6703
       targetPort: 6703
-  selector: storm-worker
+  selector:
+    name: storm-worker
