@@ -17,8 +17,8 @@ object Configuration {
   val APP_ID: String = "social-network-analysis-app"
   val CLIENT_ID: String = "social-network-analysis-app-client"
 
-  var BOOTSTRAP_SERVERS: String = "localhost:9092,localhost:9093,localhost:9094"
-  var ZOOKEEPER_SERVERS: String = "localhost:2181,localhost:2888,localhost:3888"
+  var BOOTSTRAP_SERVERS: String = "35.204.157.42:30092"//"localhost:9092,localhost:9093,localhost:9094"
+  var ZOOKEEPER_SERVERS: String = "35.204.157.42:30181"//"localhost:2181,localhost:2888,localhost:3888"
 
   val DATASET_FRIENDSHIPS: String = "dataset/friendships.dat"
   val DATASET_POSTS: String = "dataset/posts.dat"
