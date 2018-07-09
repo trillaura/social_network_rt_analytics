@@ -1,4 +1,4 @@
-apiVersion: v1beta3
+apiVersion: v1
 kind: ReplicationController
 metadata:
   name: storm-worker-controller
@@ -13,16 +13,16 @@ spec:
       labels:
         name: storm-worker
         uses: nimbus
-  spec:
-    containers:
-      name: storm-worker
-      image: storm:latest
-      ports:
-        - name: 6700
-          containerPort: 6700
-        - name: 6701
-          containerPort: 6701
-        - name: 6702
-          containerPort: 6702
-        - name: 6703
-          containerPort: 6703
+    spec:
+      containers:
+        - name: storm-worker
+          image: storm:latest
+          ports:
+            - name: w0
+              containerPort: 6700
+            - name: w1
+              containerPort: 6701
+            - name: w2
+              containerPort: 6702
+            - name: w3
+              containerPort: 6703

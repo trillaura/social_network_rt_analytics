@@ -69,7 +69,7 @@ spec:
           --override auto.leader.rebalance.enable=true \
           --override background.threads=10 \
           --override compression.type=producer \
-          --override delete.topic.enable=false \
+          --override delete.topic.enable=true \
           --override leader.imbalance.check.interval.seconds=300 \
           --override leader.imbalance.per.broker.percentage=10 \
           --override log.flush.interval.messages=9223372036854775807 \
@@ -152,7 +152,7 @@ spec:
         - name: KAFKA_HEAP_OPTS
           value : "-Xmx512M -Xms512M"
         - name: KAFKA_OPTS
-          value: "-Dlogging.level=INFO"
+          value: "-Dlogging.level=DEBUG"
         volumeMounts:
         - name: datadir
           mountPath: /var/lib/kafka
