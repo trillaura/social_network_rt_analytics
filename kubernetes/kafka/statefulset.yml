@@ -60,7 +60,7 @@ spec:
         - sh
         - -c
         - "exec kafka-server-start.sh /opt/kafka/config/server.properties --override broker.id=${HOSTNAME##*-} \
-          --override listeners=PLAINTEXT://9093 \
+          --override listeners=PLAINTEXT://:9093 \
           --override zookeeper.connect=zk-cs.default.svc.cluster.local:2181 \
           --override log.dir=/var/lib/kafka \
           --override auto.create.topics.enable=true \
@@ -145,8 +145,7 @@ spec:
           --override replica.fetch.backoff.ms=1000 \
           --override replica.fetch.max.bytes=1048576 \
           --override replica.fetch.response.max.bytes=10485760 \
-          --override reserved.broker.max.id=1000 \
-          "
+          --override reserved.broker.max.id=1000 "
         env:
         - name: KAFKA_HEAP_OPTS
           value : "-Xmx512M -Xms512M"
