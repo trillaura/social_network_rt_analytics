@@ -1,0 +1,10 @@
+apiVersion: v1beta3
+kind: Service
+metadata:
+  name: nimbus
+spec:
+  ports:
+    port: 6627
+    targetPort: 6627
+  selector:
+    name: nimbus
