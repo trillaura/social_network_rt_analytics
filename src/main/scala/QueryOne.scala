@@ -28,6 +28,7 @@ object QueryOne {
   private val stream = env
     .addSource(new FlinkKafkaConsumer011(Configuration.FRIENDS_INPUT_TOPIC, new FriedshipAvroDeserializationSchema, properties))
 
+
   /**
     * Query One implementation through window function.
     * The filtering step removes duplicates caused by bidirectional friendships.
@@ -98,6 +99,78 @@ object QueryOne {
         Configuration.FRIENDS_OUTPUT_TOPIC_ALLTIME,
         new ResultAvroSerializationSchemaFriendships(Configuration.FRIENDS_OUTPUT_TOPIC_ALLTIME))
     )
+  }
+
+
+  /**
+    *
+    * Computing LATENCY: Add a field with the current timestamp to each record and compute elapsed time into the system.
+    *
+    **/
+  private def executeWithSlidingWindowParallelBenchmark(): Unit = {
+
+    val data = env.readTextFile("dataset/friendships.dat")
+
+    val filtered = data.mapWith(line => {
+      val s = line.split("\\|")
+      (s(0), s(1), s(2))
+    })
+      .mapWith(str => {
+        if (str._2.toLong > str._3.toLong) (str._1, str._2, str._3, System.currentTimeMillis()) else (str._1, str._3, str._2, System.currentTimeMillis())
+      })
+      .keyBy(conn => (conn._2, conn._3))
+      .flatMap(new FilterFunctionWithLatency)
+
+    val dailyCountIndividual = filtered
+      .mapWith(tuple => (new DateTime(tuple._1).getMillis, tuple._2, tuple._4)) // :(timestamp, user1_id)
+      .assignAscendingTimestamps(tuple => tuple._1)
+      .keyBy(tuple => tuple._2) // key bu user1_id
+      .window(TumblingEventTimeWindows.of(Time.hours(24)))
+      .aggregate(new CountDailyWithLatency, new AddWindowStartDailyWithLatency) // :(user1_id, window_start, count per hourly slot)
+      .setParallelism(4)
+
+    val dailyCount = dailyCountIndividual
+      .mapWith(tuple => (tuple._2, tuple._3, tuple._4)) // :(start, [count00, count01 ,...])
+      .keyBy(r => r._1)
+      .reduce((v1, v2) => {
+        var minTimestamp = 0L
+        if (v1._3 < v2._3 || minTimestamp == 0) minTimestamp = v1._3 else minTimestamp = v2._3
+        (v1._1, v1._2.zip(v2._2).map { case (x, y) => x + y }, minTimestamp)
+      })
+
+
+    // Compute Latency
+
+    dailyCount
+      .process(new ComputeLatency)
+      .map(latency => println("\nDaily latency " + latency))
+
+    val weeklyCount =
+      dailyCountIndividual
+        .keyBy(userId => userId._1)
+        .timeWindow(Time.days(7), Time.hours(24))
+        .aggregate(new CountWeeklyWithLatency, new AddWindowStartWeeklyWithLatency)
+        .setParallelism(4)
+        .keyBy(windowStart => windowStart._1)
+        .reduce((v1, v2) => {
+          var minTimestamp = 0L
+          if (v1._3 < v2._3 || minTimestamp == 0) minTimestamp = v1._3 else minTimestamp = v2._3
+          (v1._1, v1._2.zip(v2._2).map { case (x, y) => x + y }, minTimestamp)
+        })
+
+    weeklyCount
+      .process(new ComputeLatency)
+      .map(latency => println("\nWeekly latency " + latency))
+
+
+    val globalCount =
+      dailyCountIndividual
+        .mapWith(tuple => (tuple._2, tuple._3, tuple._4))
+        .countWindowAll(1)
+        .process(new CountWithStateAndLatency)
+
+
+    globalCount.map(tuple => println("\nGlobal latency " + tuple._3))
   }
 
   // ============================ //
@@ -247,7 +320,9 @@ object QueryOne {
   }
 
   def main(args: Array[String]): Unit = {
-    executeWithSlidingWindowParallel(stream)
+    //    executeWithSlidingWindowParallelBenchmark()
+    executeWithSlidingWindowParallelBenchmark()
+    //    env.getConfig.setLatencyTrackingInterval(1L)
     env.execute()
   }
 }
