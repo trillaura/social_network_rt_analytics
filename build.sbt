@@ -75,6 +75,9 @@ assemblyMergeStrategy in assembly := {
   case PathList("META-INF", xs @ _*) => MergeStrategy.discard
   case PathList("com", "esotericsoftware", xs @ _*) => MergeStrategy.last
   case "project.clj" =>  MergeStrategy.last
+  case "dataset/comments.dat" => MergeStrategy.discard
+  case "dataset/friendships.dat" => MergeStrategy.discard
+  case "dataset/posts.dat" => MergeStrategy.discard
   case x => MergeStrategy.first
 }
 
