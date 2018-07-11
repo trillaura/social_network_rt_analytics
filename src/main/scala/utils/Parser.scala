@@ -36,6 +36,7 @@ object Parser {
   }
 
 
+
   /* NOTE: needs to be a char. Single ' */
   val PIPE_DELIMITER = '|'
 

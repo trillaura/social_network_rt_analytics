@@ -6,6 +6,7 @@ import org.apache.flink.streaming.api.windowing.assigners.{SlidingEventTimeWindo
 import org.apache.flink.streaming.api.windowing.time.Time
 import java.util.Properties
 
+import QueryTwoMetrics.{executeSliding, executeTumbling}
 import flink_operators.{GlobalRanker, IncrementalRankMerger, PartialRanker, SimpleScoreAggregator}
 import org.apache.flink.api.java.utils.ParameterTool
 import utils.ranking._
@@ -23,6 +24,7 @@ object QueryTwo {
 
   val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
   env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+  env.getConfig.setLatencyTrackingInterval(5L)
   env.setParallelism(1)
 
 
@@ -41,35 +43,47 @@ object QueryTwo {
     * @param inputPath file input path
     * @param outputPath file input path directory
     */
-  def executeTumbling(inputPath: String, outputPath : String) : Unit = {
+  def executeTumbling(inputPath: String, outputPath : String,
+                      parserParallelism: Int,rankParallelism: Int, writeResultsToFile: Boolean) : Unit = {
 
-    val hourlyResults =  stream
+    val hourlyResults =  env.readTextFile(inputPath)
       .flatMap {  Parser.parseComment(_)  filter { _.isPostComment() } }
+      .setParallelism(parserParallelism)
       .assignAscendingTimestamps( _.timestamp.getMillis )
       .map(postComment => (postComment.parentID, SimpleScore(1)))
+      .setParallelism(parserParallelism)
       .keyBy(_._1)
       .window(TumblingEventTimeWindows.of(Time.hours(1)))
       .aggregate(new SimpleScoreAggregator,new PartialRanker)
-      .setParallelism(2)
+      .setParallelism(rankParallelism)
       .process(new GlobalRanker)
       .setParallelism(1)
 
 
-    hourlyResults.writeAsText(outputPath + "results/q2-hourly-p")
+    if(writeResultsToFile){
+      hourlyResults.writeAsText(outputPath + "results/q2-hourly-tumbling")
+    }
+
 
     val dailyResults = hourlyResults
       .assignAscendingTimestamps(res => Parser.millisFromStringDate(res.timestamp))
       .windowAll(TumblingEventTimeWindows.of(Time.hours(24)))
       .process(new IncrementalRankMerger)
 
-    dailyResults.writeAsText(outputPath + "results/q2-daily-p")
+    if(writeResultsToFile){
+      dailyResults.writeAsText(outputPath + "results/q2-daily-tumbling")
+    }
+
 
     val weeklyResults = dailyResults
       .assignAscendingTimestamps(res => Parser.millisFromStringDate(res.timestamp))
       .windowAll(TumblingEventTimeWindows.of(Time.days(7)))
       .process(new IncrementalRankMerger)
 
-    weeklyResults.writeAsText(outputPath + "results/q2-weekly-p")
+    if(writeResultsToFile){
+      weeklyResults.writeAsText(outputPath + "results/q2-weekly-tumbling")
+    }
+
 
   }
 
@@ -78,46 +92,60 @@ object QueryTwo {
     * @param inputPath
     * @param outputPath
     */
-  def executeSliding(inputPath: String, outputPath : String) : Unit = {
+  def executeSliding(inputPath: String, outputPath : String,
+                     parserParallelism: Int,rankParallelism: Int, writeResultsToFile: Boolean) : Unit = {
 
     /* main filtered data to use in different windows */
-    val keyedFilteredData = stream
+    val keyedFilteredData = env.readTextFile(inputPath)
       .flatMap {  Parser.parseComment(_)  filter { _.isPostComment() } }
+      .setParallelism(parserParallelism)
       .assignAscendingTimestamps( _.timestamp.getMillis )
       .map(postComment => (postComment.parentID, SimpleScore(1)))
+      .setParallelism(parserParallelism)
       .keyBy(_._1)
 
 
     val hourlyResults = keyedFilteredData
       .window(SlidingEventTimeWindows.of(Time.hours(1), Time.minutes(30)))
       .aggregate(new SimpleScoreAggregator,new PartialRanker)
-      .setParallelism(4)
+      .setParallelism(rankParallelism * 2)
       .process(new GlobalRanker)
       .setParallelism(1)
 
-    hourlyResults.writeAsText(outputPath + "results/q2-hourly-sliding")
+    if(writeResultsToFile){
+      hourlyResults.writeAsText(outputPath + "results/q2-hourly-sliding")
+    }
+
 
     val dailyResults = keyedFilteredData
       .window(SlidingEventTimeWindows.of(Time.hours(24), Time.hours(1)))
       .aggregate(new SimpleScoreAggregator,new PartialRanker)
-      .setParallelism(2)
+      .setParallelism(rankParallelism * 2 - 1)
       .process(new GlobalRanker)
       .setParallelism(1)
 
-    dailyResults.writeAsText(outputPath + "results/q2-daily-sliding")
+    if(writeResultsToFile){
+      dailyResults.writeAsText(outputPath + "results/q2-daily-sliding")
+    }
+
 
     val weeklyResults = keyedFilteredData
       .window(SlidingEventTimeWindows.of(Time.days(7), Time.days(1)))
       .aggregate(new SimpleScoreAggregator,new PartialRanker)
-      .setParallelism(2)
+      .setParallelism(rankParallelism)
       .process(new GlobalRanker)
       .setParallelism(1)
+
+    if(writeResultsToFile){
+      weeklyResults.writeAsText(outputPath + "results/q2-weekly-sliding")
+    }
+
 
     /*
        Adding sink: Write on Kafka topic
     */
 
-    hourlyResults.addSink(
+    /*hourlyResults.addSink(
       new FlinkKafkaProducer011(
         Configuration.BOOTSTRAP_SERVERS,
         Configuration.COMMENTS_OUTPUT_TOPIC_H1,
@@ -138,7 +166,7 @@ object QueryTwo {
         Configuration.BOOTSTRAP_SERVERS,
         Configuration.COMMENTS_OUTPUT_TOPIC_7D,
         new ResultAvroSerializationSchemaRanking(Configuration.COMMENTS_OUTPUT_TOPIC_7D))
-    )
+    ) */
 
   }
 
@@ -148,16 +176,23 @@ object QueryTwo {
 
     val params : ParameterTool = ParameterTool.fromArgs(args)
 
-    val inputPath = params.getRequired("input")
-    val outputPath = params.getRequired("output")
+    val inputPath = params.get("input")
+    val outputPath = params.get("output", "/")
+    val windowType = params.get("window", "tumbling")
+    val parserParallelism = params.getInt("parser-parallelism", 2)
+    val rankParallelism = params.getInt("rank-parallelism",2)
 
+    val writeResultsToFile = false
 
-    executeTumbling(inputPath, outputPath)
-    //executeSliding(inputPath, outputPath)
-
+    if(windowType == "tumbling"){
+      executeTumbling(inputPath, outputPath,parserParallelism,rankParallelism, writeResultsToFile)
+    } else if(windowType == "sliding"){
+      executeSliding(inputPath, outputPath,parserParallelism,rankParallelism,writeResultsToFile)
+    }
 
     val executingResults = env.execute()
     println("Query 2 Execution took " + executingResults.getNetRuntime(TimeUnit.SECONDS) + " seconds")
+    println(executingResults.getAllAccumulatorResults)
   }
 }
 

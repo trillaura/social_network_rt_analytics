@@ -13,6 +13,15 @@ spec:
       containers:
       - name: jobmanager
         image: flink:latest
+        #command: ["/bin/sh"]
+        #args: ["-c", "mkdir /dataset; curl -O https://storage.googleapis.com/dataset_sabd/posts.dat;
+        #         curl -O https://storage.googleapis.com/dataset_sabd/friendships.dat; curl -O https://storage.googleapis.com/dataset_sabd/comments.dat;
+        #         mv comments.dat /dataset/comments.dat; mv friendships.dat /dataset/friendships.dat; mv posts.dat /dataset/posts.dat;
+        #         mkdir /metrics; touch /metrics/q2-hourly-sliding; touch /metrics/q2-daily-sliding; touch /metrics/q2-weekly-sliding;
+        #         touch /metrics/q2-hourly-tumbling; touch /metrics/q2-daily-tumbling; touch /metrics/q2-weekly-tumbling;
+        #         mkdir /results; touch /results/q2-hourly-sliding; touch /results/q2-daily-sliding; touch /results/q2-weekly-sliding;
+        #          touch /results/q2-hourly-tumbling; touch /results/q2-daily-tumbling; touch /results/q2-weekly-tumbling;
+        #          /opt/flink/bin/jobmanager.sh"]
         args:
         - jobmanager
         ports:
