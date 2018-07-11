@@ -5,6 +5,7 @@ import java.util.Properties
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 
 import com.lightbend.kafka.scala.streams._
+import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.kafka.common.serialization._
 import org.apache.kafka.streams.{Consumed, KafkaStreams, StreamsConfig, Topology}
 import org.apache.kafka.streams.kstream.{Printed, Serialized, _}
@@ -184,7 +185,7 @@ object Query1 {
     if (Configuration.DEBUG) { resultsAllTime.print(Printed.toSysOut[String, Array[Byte]]) }
 
 
-    //         Write the `KTable<String, Long>` to the output topic.
+    // Write  to the output topic.
     resultsH24
       .map(
         (timestamp, array) => {
@@ -231,6 +232,13 @@ object Query1 {
   }
 
   def main(args: Array[String]): Unit = {
+    val params : ParameterTool= ParameterTool.fromArgs(args)
+    val bootstrapServers = params.get("bootstrap")
+    val zookeeper = params.get("zookeeper", Configuration.ZOOKEEPER_SERVERS)
+
+    Configuration.BOOTSTRAP_SERVERS = bootstrapServers
+    Configuration.ZOOKEEPER_SERVERS = zookeeper
+
     execute()
   }
 }

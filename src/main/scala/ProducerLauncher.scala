@@ -14,16 +14,7 @@ object ProducerLauncher {
   }
 
   def launch(boostrap : String,zookeeper: String,streamSelector: String) : Unit = {
-    val FREQUENCY : Int  = 100000
-
-    /* NOT WORKING ON CLOUD DEPLOYMENT. MANUALLY CREATE TOPICS OR WITH PROVIDED SCRIPT IN kubernetes/kafka/create_topics.sh */
-
-    //val kafka = new KafkaManager(boostrap,zookeeper)
-    //KafkaManager.clearAll()
-    //kafka.clearAll()
-    //for (t <- Configuration.INPUT_TOPICS) { kafka.createTopic(t, 1, 1: Short) }
-    //for (t <- Configuration.OUTPUT_TOPICS) { kafka.createTopic(t, 1, 1: Short) }
-
+    val FREQUENCY : Int  = 10000000
 
     for(stream <- streamSelector) {
       stream match {
@@ -37,9 +28,15 @@ object ProducerLauncher {
 
   def main(args: Array[String]): Unit = {
     val params : ParameterTool= ParameterTool.fromArgs(args)
-    val bootstrapServers = params.get("bootstrap")
+    val bootstrapServers = params.get("bootstrap", Configuration.BOOTSTRAP_SERVERS)
     val zookeeper = params.get("zookeeper", Configuration.ZOOKEEPER_SERVERS)
     val streamSelector = params.get("streams", "fcp")
+
+    /* NOT WORKING ON CLOUD DEPLOYMENT.
+      MANUALLY CREATE TOPICS OR WITH PROVIDED SCRIPT IN kubernetes/kafka/create_topics.sh */
+    val kafka = new KafkaManager(bootstrapServers, zookeeper)
+    for (t <- Configuration.INPUT_TOPICS) { kafka.createTopic(t, 1, 1: Short) }
+    for (t <- Configuration.OUTPUT_TOPICS) { kafka.createTopic(t, 1, 1: Short) }
 
     launch(bootstrapServers,zookeeper,streamSelector)
   }
