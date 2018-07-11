@@ -61,7 +61,7 @@ spec:
         - sh
         - -c
         - "exec kafka-server-start.sh /opt/kafka/config/server.properties --override broker.id=${HOSTNAME##*-} \
-          --override advertised.listeners=PLAINTEXT://35.204.248.219:30092
+          --override advertised.listeners=PLAINTEXT://35.204.102.28:30092
           --override listeners=PLAINTEXT://:9093 \
           --override zookeeper.connect=zk-cs.default.svc.cluster.local:2181 \
           --override log.dir=/var/lib/kafka \

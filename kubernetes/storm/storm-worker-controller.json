@@ -1,0 +1,50 @@
+{
+  "kind": "ReplicationController",
+  "apiVersion": "v1",
+  "metadata": {
+    "name": "storm-worker-controller",
+    "labels": {
+      "name": "storm-worker"
+    }
+  },
+  "spec": {
+    "replicas": 1,
+    "selector": {
+      "name": "storm-worker"
+    },
+    "template": {
+      "metadata": {
+        "labels": {
+          "name": "storm-worker",
+          "uses": "nimbus"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "storm-worker",
+            "image": "mattf/storm-worker",
+            "ports": [
+              {
+                "name": "w0",
+                "containerPort": 6700
+              },
+              {
+                "name": "w1",
+                "containerPort": 6701
+              },
+              {
+                "name": "w2",
+                "containerPort": 6702
+              },
+              {
+                "name": "w3",
+                "containerPort": 6703
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
