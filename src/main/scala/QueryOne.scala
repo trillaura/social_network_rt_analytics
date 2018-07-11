@@ -1,6 +1,8 @@
 import java.util.Properties
+import java.util.concurrent.TimeUnit
 
 import org.apache.flink.api.common.functions.ReduceFunction
+import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.scala.extensions._
@@ -19,6 +21,8 @@ object QueryOne {
 
   val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
   env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+  env.getConfig.setLatencyTrackingInterval(1L)
+  env.setParallelism(1)
 
   val properties = new Properties()
   properties.setProperty("bootstrap.servers", Configuration.BOOTSTRAP_SERVERS)
@@ -37,7 +41,8 @@ object QueryOne {
     *
     * @param ds DataStream
     */
-  def executeWithSlidingWindowParallel(ds: DataStream[(String, String, String)]): Unit = {
+  def executeWithSlidingWindowParallel(ds: DataStream[(String, String, String)],
+                                       dailyParallelism: Int, weeklyParallelism: Int): Unit = {
 
     val filtered = ds
       .mapWith(str => {
@@ -53,7 +58,7 @@ object QueryOne {
       .window(TumblingEventTimeWindows.of(Time.hours(24)))
       .aggregate(new CountDaily, new AddWindowStartDaily) // :(user1_id, window_start, count per hourly slot)
 
-      .setParallelism(4)
+      .setParallelism(dailyParallelism)
 
     val dailyCount = dailyCountIndividual
       .mapWith(tuple => (tuple._2, tuple._3)) // :(start, [count00, count01 ,...])
@@ -65,7 +70,7 @@ object QueryOne {
         .keyBy(userId => userId._1)
         .timeWindow(Time.days(7), Time.hours(24))
         .aggregate(new CountWeekly, new AddWindowStartWeekly)
-        .setParallelism(4)
+        .setParallelism(weeklyParallelism)
         .keyBy(windowStart => windowStart._1)
         .reduce((v1, v2) => (v1._1, v1._2.zip(v2._2).map { case (x, y) => x + y }))
 
@@ -79,7 +84,7 @@ object QueryOne {
      *  SING TO WRITE ON KAFKA
      */
 
-    dailyCount.addSink(
+    /* dailyCount.addSink(
       new FlinkKafkaProducer011(
         Configuration.BOOTSTRAP_SERVERS,
         Configuration.FRIENDS_OUTPUT_TOPIC_H24,
@@ -98,7 +103,7 @@ object QueryOne {
         Configuration.BOOTSTRAP_SERVERS,
         Configuration.FRIENDS_OUTPUT_TOPIC_ALLTIME,
         new ResultAvroSerializationSchemaFriendships(Configuration.FRIENDS_OUTPUT_TOPIC_ALLTIME))
-    )
+    ) */
   }
 
 
@@ -320,9 +325,23 @@ object QueryOne {
   }
 
   def main(args: Array[String]): Unit = {
-    //    executeWithSlidingWindowParallelBenchmark()
-    executeWithSlidingWindowParallelBenchmark()
-    //    env.getConfig.setLatencyTrackingInterval(1L)
-    env.execute()
+
+    val params : ParameterTool = ParameterTool.fromArgs(args)
+
+    val inputPath = params.get("input")
+    val dailyParallelism = params.getInt("daily-parallelism",4)
+    val weeklyParallelism = params.getInt("weekly-parallelism",2)
+
+    val connStream = env.readTextFile(inputPath)
+        .map(line => {
+          val fr = Parser.parseUserConnection(line).get
+          (fr.timestamp.toString, fr.firstUser.id.toString, fr.secondUser.id.toString)
+        })
+    executeWithSlidingWindowParallel(connStream, dailyParallelism, weeklyParallelism)
+
+    val executionResults = env.execute()
+
+    println("Query 1 Execution took " + executionResults.getNetRuntime(TimeUnit.SECONDS) + " seconds")
+    println(executionResults.getAllAccumulatorResults)
   }
 }
